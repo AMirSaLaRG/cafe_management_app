@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, Date, Boolean, ForeignKey, DateTime, TIMESTAMP, \
+from sqlalchemy import Column, Integer, String, Float, Date, Boolean, ForeignKey, DateTime, TIMESTAMP, \
     Time
 from sqlalchemy.orm import declarative_base, relationship
 from eralchemy import render_er
@@ -9,7 +9,7 @@ class Inventory(Base):
     __tablename__ = 'inventory'
 
     id = Column(Integer, primary_key=True)
-    name = Column(String(255), nullable=False)
+    name = Column(String(255), nullable=False, unique=True)
     unit = Column(String(50))
     current_stock = Column(Float)  # Auto-updated by system
     category = Column(String(255))
