@@ -43,11 +43,11 @@ class Menu(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(150), nullable=False)
-    size = Column(String)
+    size = Column(String, nullable=False, default='m')
     category = Column(String)
     current_price = Column(Float)
     value_added_tax = Column(Float)
-    serving = Column(Boolean)
+    serving = Column(Boolean, default=True)
     description = Column(String(500))
 
     recipe = relationship('Recipe', back_populates='menu_item')
