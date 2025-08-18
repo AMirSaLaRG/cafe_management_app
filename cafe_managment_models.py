@@ -2,9 +2,10 @@ from sqlalchemy import Column, Integer, String, Float, Date, Boolean, ForeignKey
     Time
 from sqlalchemy.orm import declarative_base, relationship
 from eralchemy import render_er
+from datetime import datetime, timezone
 
 Base = declarative_base()
-
+#done
 class Inventory(Base):
     __tablename__ = 'inventory'
 
@@ -35,9 +36,10 @@ class InventoryRecord(Base):
     manual_report = Column(Float)
     date = Column(TIMESTAMP)
     description = Column(String(500))
+    time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     inventory_item = relationship("Inventory", back_populates="records")
-
+#done
 class Menu(Base):
     __tablename__ = 'menu'
 

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List, Tuple, Union
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -133,7 +133,7 @@ class DbHandler:
     def add_menu(self,
                  name:str,
                  size:Optional[str],
-                 category:str="M",
+                 category:Optional[str]=None,
                  current_price:Optional[float]=None,
                  value_added_tax:Optional[float]=None,
                  serving:bool=True,
@@ -267,6 +267,157 @@ class DbHandler:
                 logging.error(f"Failed to delete menu item {menu_id}: {e}")
                 return False
 
+
+    #--inventory record--
+    def add_inventoryrecord(self,
+                 inventory_id:int,
+                 sold_amount:Optional[float]=None,
+                 other_used_amount:Optional[float]=None,
+                 supplied_amount:Optional[float]=None,
+                 auto_calculated_amount:Optional[float]=None,
+                 manual_report:Optional[float]=None,
+                 date:datetime=None,
+                 description:Optional[str]=None,
+                 ) -> Optional[InventoryRecord]:
+        """ adding new inventory record item """
+        with self.Session() as session:
+            try:
+                if sold_amount is not None and sold_amount < 0:
+                    raise ValueError("sold_amount: value cant be negative")
+                if other_used_amount is not None and other_used_amount < 0:
+                    raise ValueError("other_used_amount: value cant be negative")
+                if supplied_amount is not None and supplied_amount < 0:
+                    raise ValueError("supplied_amount: value cant be negative")
+                if auto_calculated_amount is not None and auto_calculated_amount < 0:
+                    raise ValueError("auto_calculated_amount: value cant be negative")
+                if manual_report is not None and manual_report < 0:
+                    raise ValueError("manual_report: value cant be negative")
+                if not session.get(Inventory, inventory_id):
+                    raise ValueError(f"Inventory ID {inventory_id} not found")
+                date = date if date is not None else datetime.now()
+
+                new_record = InventoryRecord(
+                    inventory_id=inventory_id,
+                    sold_amount=sold_amount,
+                    other_used_amount=other_used_amount,
+                    supplied_amount=supplied_amount,
+                    auto_calculated_amount=auto_calculated_amount,
+                    manual_report=manual_report,
+                    date=date,
+                    description=description,
+                )
+                session.add(new_record)
+                session.commit()
+                session.refresh(new_record)
+                logging.info("inventory record added successfully")
+                return new_record
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to add inventory record item to the database: {e}")
+                return None
+
+    def get_inventoryrecord(
+            self,
+            inventory_id: int,
+            last: bool = True,
+            from_date: Optional[datetime] = None,
+            to_date: Optional[datetime] = None
+    ) -> Union[Optional[InventoryRecord], List[InventoryRecord]]:
+        """Get inventory record(s) for an inventory item
+
+        Args:
+            inventory_id: Inventory item ID to filter by
+            last: If True, returns only the most recent record
+                  If False, returns all records (optionally filtered by date range)
+            from_date: Optional start date for filtering records
+            to_date: Optional end date for filtering records
+
+        Returns:
+            - If last=True: Single InventoryRecord or None
+            - If last=False: List of InventoryRecords (may be empty)
+        """
+
+        with (self.Session() as session):
+            try:
+                query = session.query(InventoryRecord).filter_by(
+                    inventory_id=inventory_id
+                )
+
+                if from_date:
+                    query = query.filter(InventoryRecord.date >= from_date)
+                if to_date:
+                    query = query.filter(InventoryRecord.date <= to_date)
+
+                query = query.order_by(InventoryRecord.date.desc())
+
+                if last:
+                    # Get single most recent record
+                    record: Optional[InventoryRecord] = query.first()
+                    if record:
+                        logging.info(f"Found last record from {record.date}")
+                        return record
+                    logging.warning(f"No records found for inventory ID {inventory_id}")
+                    return None
+                else:
+                    # Get all matching records
+                    records = query.all()
+                    logging.info(f"Found {len(records)} records for inventory ID {inventory_id}")
+                    return records
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Error fetching records for inventory {inventory_id}: {str(e)}")
+                return None if last else []
+
+    def edit_inventoryrecord(self, inventory_record:InventoryRecord) -> Optional[InventoryRecord]:
+        """
+        Updates an existing inventory record in the database.
+
+        Args:
+            inventory_record: The InventoryRecord object with updated values.
+                             Must have a valid ID for existing records.
+
+        Returns:
+            The updated InventoryRecord if successful, None on error.
+        """
+
+        if not inventory_record.id:
+            logging.error("Cannot edit inventory record without a valid ID.")
+            return None
+        with self.Session() as session:
+            try:
+                existing = session.get(InventoryRecord, inventory_record.id)
+                if not existing:
+                    logging.error(f"No inventory record found with ID: {inventory_record.id}")
+                    return None
+                merged_record  = session.merge(inventory_record)
+                session.commit()
+                session.refresh(merged_record )
+                logging.info(f"Successfully updated inventory record with id: {inventory_record.id}")
+                return merged_record
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to update inventory record with id: {inventory_record.id}: {e}")
+                return None
+
+    def delete_inventoryrecord(self, id: int) -> bool:
+        """
+        Deletes an inventory record by ID.
+        Returns True if deleted, False otherwise.
+        """
+        with self.Session() as session:
+            try:
+                record = session.get(InventoryRecord, id)
+                if not record:
+                    logging.warning(f"No inventory record found with id: {id}")
+                    return False
+                session.delete(record)
+                session.commit()
+                logging.info(f"Deleted inventory record with id: {id}")
+                return True
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to delete inventory record {id}: {e}")
+                return False
 
 db = DbHandler()
 
