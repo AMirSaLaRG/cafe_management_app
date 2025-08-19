@@ -140,12 +140,15 @@ class DbHandler:
                  description:Optional[str]=None,
                  ) -> Optional[Menu]:
         """ adding new menu item name + size must be unique"""
+        if current_price is not None and current_price < 0:
+            logging.error("Price cannot be negative")
+            return None
+        if value_added_tax is not None and not (0 <= value_added_tax <= 1):
+            logging.error("VAT must be between 0-1")
+            return None
         with self.Session() as session:
             try:
-                if current_price is not None and current_price < 0:
-                    raise ValueError("Price cannot be negative")
-                if value_added_tax is not None and not (0 <= value_added_tax <= 1):
-                    raise ValueError("VAT must be between 0-1")
+
                 # The timestamp column in your model is "date_of_initial_value".
                 # SQLAlchemy handles the conversion from a Python datetime object to TIMESTAMP.
                 existing = session.query(Menu).filter_by(
@@ -280,20 +283,29 @@ class DbHandler:
                  description:Optional[str]=None,
                  ) -> Optional[InventoryRecord]:
         """ adding new inventory record item """
+        if sold_amount is not None and sold_amount < 0:
+            logging.error("sold_amount: value cant be negative")
+            return None
+        if other_used_amount is not None and other_used_amount < 0:
+            logging.error("other_used_amount: value cant be negative")
+            return None
+        if supplied_amount is not None and supplied_amount < 0:
+            logging.error("supplied_amount: value cant be negative")
+            return None
+        if auto_calculated_amount is not None and auto_calculated_amount < 0:
+            logging.error("auto_calculated_amount: value cant be negative")
+            return None
+        if manual_report is not None and manual_report < 0:
+            logging.error("manual_report: value cant be negative")
+            return None
+
         with self.Session() as session:
             try:
-                if sold_amount is not None and sold_amount < 0:
-                    raise ValueError("sold_amount: value cant be negative")
-                if other_used_amount is not None and other_used_amount < 0:
-                    raise ValueError("other_used_amount: value cant be negative")
-                if supplied_amount is not None and supplied_amount < 0:
-                    raise ValueError("supplied_amount: value cant be negative")
-                if auto_calculated_amount is not None and auto_calculated_amount < 0:
-                    raise ValueError("auto_calculated_amount: value cant be negative")
-                if manual_report is not None and manual_report < 0:
-                    raise ValueError("manual_report: value cant be negative")
                 if not session.get(Inventory, inventory_id):
-                    raise ValueError(f"Inventory ID {inventory_id} not found")
+                    logging.error(f"Inventory ID {inventory_id} not found")
+                    session.rollback()
+                    return None
+
                 date = date if date is not None else datetime.now()
 
                 new_record = InventoryRecord(
@@ -418,6 +430,183 @@ class DbHandler:
                 session.rollback()
                 logging.error(f"Failed to delete inventory record {id}: {e}")
                 return False
+
+
+
+
+    #--EstimatedMenuPriceRecord--
+    def add_estimatedmenupricerecord(self,
+                 menu_id:int,
+                 sales_forecast:Optional[int]=None,
+                 estimated_indirect_costs:Optional[float]=None,
+                 direct_cost:Optional[float]=None,
+                 profit:Optional[float]=None,
+                 estimated_price:Optional[float]=None,
+                 manual_price:Optional[float]=None,
+                 from_date:Optional[datetime]=None,
+                 estimated_to_date:Optional[datetime]=None,
+
+                 description:Optional[str]=None,
+                 ) -> Optional[EstimatedMenuPriceRecord]:
+        """ adding new estimate of price item """
+
+        if sales_forecast is not None and sales_forecast < 0:
+            logging.error("sales_forecast: value cant be negative")
+            return None
+        if estimated_indirect_costs is not None and estimated_indirect_costs < 0:
+            logging.error("estimated_indirect_costs: value cant be negative")
+            return None
+        if direct_cost is not None and direct_cost < 0:
+            logging.error("direct_cost: value cant be negative")
+            return None
+        if profit is not None and profit < 0:
+            logging.warning("profit: value should not be negative")
+            return None
+        if estimated_price is not None and estimated_price < 0:
+            logging.error("estimated_price: value cant be negative")
+            return None
+        if manual_price is not None and manual_price < 0:
+            logging.error("manual_price: value cant be negative")
+            return None
+
+        if estimated_to_date and from_date and estimated_to_date < from_date:
+            logging.error("estimated_to_date must be after from_date")
+            return None
+        from_date = from_date if from_date is not None else datetime.now()
+        with self.Session() as session:
+            try:
+                if not session.get(Menu, menu_id):
+                    logging.error(f"Menu ID {menu_id} not found")
+                    session.rollback()
+                    return None
+
+                new_record = EstimatedMenuPriceRecord(
+                    menu_id=menu_id,
+                    sales_forecast=sales_forecast,
+                    estimated_indirect_costs=estimated_indirect_costs,
+                    direct_cost=direct_cost,
+                    profit=profit,
+                    estimated_price=estimated_price,
+                    manual_price=manual_price,
+                    from_date=from_date,
+                    estimated_to_date=estimated_to_date,
+                    description=description,
+                )
+                session.add(new_record)
+                session.commit()
+                session.refresh(new_record)
+                logging.info("price estimation record added successfully")
+                return new_record
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to add price estimation record item to the database: {e}")
+                return None
+
+    def get_estimatedmenupricerecord(
+            self,
+            menu_id: int,
+            last: bool = True,
+            from_date: Optional[datetime] = None,
+            to_date: Optional[datetime] = None
+    ) -> Union[Optional[EstimatedMenuPriceRecord], List[EstimatedMenuPriceRecord]]:
+        """Get price estimation record(s) for an inventory item
+
+        Args:
+            menu_id: menu item ID to filter by
+            last: If True, returns only the most recent record
+                  If False, returns all records (optionally filtered by date range)
+            from_date: Optional start date for filtering records
+            to_date: Optional end date for filtering records
+
+        Returns:
+            - If last=True: Single EstimatedMenuPriceRecord or None
+            - If last=False: List of EstimatedMenuPriceRecord (may be empty)
+        """
+
+        with (self.Session() as session):
+            try:
+                query = session.query(EstimatedMenuPriceRecord).filter_by(
+                    menu_id=menu_id
+                )
+
+                if from_date:
+                    query = query.filter(EstimatedMenuPriceRecord.from_date >= from_date)
+                if to_date:
+                    query = query.filter(EstimatedMenuPriceRecord.from_date <= to_date)
+
+                query = query.order_by(EstimatedMenuPriceRecord.from_date.desc())
+
+                if last:
+                    # Get single most recent record
+                    record: Optional[EstimatedMenuPriceRecord] = query.first()
+                    if record:
+                        logging.info(f"Found last record from {record.from_date}")
+                        return record
+                    logging.warning(f"No records found for menu ID {menu_id}")
+                    return None
+                else:
+                    # Get all matching records
+                    records = query.all()
+                    logging.info(f"Found {len(records)} records for menu ID {menu_id}")
+                    return records
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Error fetching records for menu {menu_id}: {str(e)}")
+                return None if last else []
+
+    def edit_estimatedmenupricerecord(self, price_estimation_record:EstimatedMenuPriceRecord) -> Optional[EstimatedMenuPriceRecord]:
+        """
+        Updates an existing price estimation record in the database.
+
+        Args:
+            price_estimation_record: The EstimatedMenuPriceRecord object with updated values.
+                             Must have a valid ID for existing records.
+
+        Returns:
+            The updated EstimatedMenuPriceRecord if successful, None on error.
+        """
+
+        if not price_estimation_record.id:
+            logging.error("Cannot edit inventory record without a valid ID.")
+            return None
+        with self.Session() as session:
+            try:
+                existing = session.get(EstimatedMenuPriceRecord, price_estimation_record.id)
+                if not existing:
+                    logging.error(f"No price estimation record found with ID: {price_estimation_record.id}")
+                    return None
+                merged_record  = session.merge(price_estimation_record)
+                session.commit()
+                session.refresh(merged_record )
+                logging.info(f"Successfully updated price estimation record with id: {price_estimation_record.id}")
+                return merged_record
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to update price estimation record with id: {price_estimation_record.id}: {e}")
+                return None
+
+    def delete_estimatedmenupricerecord(self, id: int) -> bool:
+        """
+        Deletes a price estimation record by ID.
+        Returns True if deleted, False otherwise.
+        """
+        with self.Session() as session:
+            try:
+                record = session.get(EstimatedMenuPriceRecord, id)
+                if not record:
+                    logging.warning(f"No price estimation record found with id: {id}")
+                    return False
+                session.delete(record)
+                session.commit()
+                logging.info(f"Deleted price estimation record with id: {id}")
+                return True
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to delete price estimation record {id}: {e}")
+                return False
+
+
+
 
 db = DbHandler()
 

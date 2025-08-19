@@ -18,12 +18,15 @@ class Inventory(Base):
     initial_value = Column(Float)
     date_of_initial_value = Column(Date)
 
+    time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
     recipes = relationship("Recipe", back_populates="inventory_item")
     supply_record = relationship("SupplyRecord", back_populates="inventory_item")
     usage_records = relationship("InventoryUsage", back_populates="inventory_item")
     records = relationship("InventoryRecord", back_populates="inventory_item")
 
-
+#done
 class InventoryRecord(Base):
     __tablename__ = "inventory_record"
 
@@ -52,30 +55,38 @@ class Menu(Base):
     serving = Column(Boolean, default=True)
     description = Column(String(500))
 
+    time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
     recipe = relationship('Recipe', back_populates='menu_item')
     sales = relationship("Sales", back_populates="menu_item")
     usage_record = relationship("MenuUsage", back_populates="menu_item")
-    records = relationship("EstimatedMenuPriceRecord" , back_populates="menu_item")
+    estimated_price_records = relationship("EstimatedMenuPriceRecord" , back_populates="menu_item")
     forecast = relationship("SalesForecast", back_populates="menu_item")
+
+
 
 class EstimatedMenuPriceRecord(Base):
     __tablename__ = "estimated_menu_price_record"
 
     id =Column(Integer, primary_key=True)
-    menu_id = Column(ForeignKey("menu.id"))
-    sales_forcast = Column(Integer)
+    menu_id = Column(ForeignKey("menu.id"), index=True)
+    sales_forecast = Column(Integer)
     estimated_indirect_costs = Column(Float)
     direct_cost = Column(Float)
     profit = Column(Float)
 
     estimated_price = Column(Float)
     manual_price = Column(Float)
-    from_date = Column(Date)
+    from_date = Column(Date, nullable=False, index=True)
     estimated_to_date = Column(Date)
 
     description = Column(String(500))
 
-    menu_item = relationship("Menu", back_populates="records")
+    time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+    menu_item = relationship("Menu", back_populates="estimated_price_records")
 
 
 
