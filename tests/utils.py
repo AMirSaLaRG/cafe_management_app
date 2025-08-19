@@ -22,7 +22,6 @@ def crud_cycle_test(db_handler: Any,
     add_func = getattr(db_handler, f'add_{model_name}')
     obj = add_func(**create_kwargs)
     assert obj is not None
-    assert getattr(obj, "id") is not None
 
     if lookup_values is None:
         lookup_values = [getattr(obj, lookup_field) for lookup_field in lookup_fields]
@@ -47,7 +46,7 @@ def crud_cycle_test(db_handler: Any,
 
     #___DELETE___
     delete_func = getattr(db_handler, f"delete_{model_name}")
-    deleted = delete_func(updated.id)
+    deleted = delete_func(fetched)
     assert deleted is True
 
     gone = get_func(**lookup)

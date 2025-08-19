@@ -21,6 +21,7 @@ class Inventory(Base):
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
+
     recipes = relationship("Recipe", back_populates="inventory_item")
     supply_record = relationship("SupplyRecord", back_populates="inventory_item")
     usage_records = relationship("InventoryUsage", back_populates="inventory_item")
@@ -66,6 +67,7 @@ class Menu(Base):
 
 
 
+#done
 class EstimatedMenuPriceRecord(Base):
     __tablename__ = "estimated_menu_price_record"
 
@@ -90,7 +92,7 @@ class EstimatedMenuPriceRecord(Base):
 
 
 
-
+#done
 class Recipe(Base):
     __tablename__ = "recipe"
 

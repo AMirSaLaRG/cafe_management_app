@@ -1,4 +1,4 @@
-from typing import Optional, List, Tuple, Union
+from typing import Optional, List, Tuple, Union, cast
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -108,24 +108,24 @@ class DbHandler:
                 logging.error(f"Failed to update inventory item with id: {inventory.id}: {e}")
                 return None
 
-    def delete_inventory(self, inventory_id: int) -> bool:
+    def delete_inventory(self, inventory: Inventory) -> bool:
         """
         Deletes an inventory item by ID.
         Returns True if deleted, False otherwise.
         """
         with self.Session() as session:
             try:
-                item = session.get(Inventory, inventory_id)
+                item = session.get(Inventory, inventory.id)
                 if not item:
-                    logging.warning(f"No inventory item found with id: {inventory_id}")
+                    logging.warning(f"No inventory item found with id: {inventory.id}")
                     return False
                 session.delete(item)
                 session.commit()
-                logging.info(f"Deleted inventory item with id: {inventory_id}")
+                logging.info(f"Deleted inventory item with id: {inventory.id}")
                 return True
             except Exception as e:
                 session.rollback()
-                logging.error(f"Failed to delete inventory item {inventory_id}: {e}")
+                logging.error(f"Failed to delete inventory item {inventory.id}: {e}")
                 return False
 
 
@@ -250,24 +250,24 @@ class DbHandler:
                 logging.error(f"Failed to update inventory item with id: {menu.id}: {e}")
                 return None
 
-    def delete_menu(self, menu_id: int) -> bool:
+    def delete_menu(self, menu: Menu) -> bool:
         """
-        Deletes an menu item by ID.
+        Deletes an object Menu.
         Returns True if deleted, False otherwise.
         """
         with self.Session() as session:
             try:
-                item = session.get(Menu, menu_id)
+                item = session.get(Menu, menu.id)
                 if not item:
-                    logging.warning(f"No inventory item found with id: {menu_id}")
+                    logging.warning(f"No inventory item found with id: {menu.id}")
                     return False
                 session.delete(item)
                 session.commit()
-                logging.info(f"Deleted menu item with id: {menu_id}")
+                logging.info(f"Deleted menu item with id: {menu.id}")
                 return True
             except Exception as e:
                 session.rollback()
-                logging.error(f"Failed to delete menu item {menu_id}: {e}")
+                logging.error(f"Failed to delete menu item {menu.id}: {e}")
                 return False
 
 
@@ -411,24 +411,24 @@ class DbHandler:
                 logging.error(f"Failed to update inventory record with id: {inventory_record.id}: {e}")
                 return None
 
-    def delete_inventoryrecord(self, id: int) -> bool:
+    def delete_inventoryrecord(self, inventory_record: InventoryRecord) -> bool:
         """
         Deletes an inventory record by ID.
         Returns True if deleted, False otherwise.
         """
         with self.Session() as session:
             try:
-                record = session.get(InventoryRecord, id)
+                record = session.get(InventoryRecord, inventory_record.id)
                 if not record:
-                    logging.warning(f"No inventory record found with id: {id}")
+                    logging.warning(f"No inventory record found with id: {inventory_record.id}")
                     return False
                 session.delete(record)
                 session.commit()
-                logging.info(f"Deleted inventory record with id: {id}")
+                logging.info(f"Deleted inventory record with id: {inventory_record.id}")
                 return True
             except Exception as e:
                 session.rollback()
-                logging.error(f"Failed to delete inventory record {id}: {e}")
+                logging.error(f"Failed to delete inventory record {inventory_record.id}: {e}")
                 return False
 
 
@@ -585,24 +585,167 @@ class DbHandler:
                 logging.error(f"Failed to update price estimation record with id: {price_estimation_record.id}: {e}")
                 return None
 
-    def delete_estimatedmenupricerecord(self, id: int) -> bool:
+    def delete_estimatedmenupricerecord(self, price_estimation_record: EstimatedMenuPriceRecord) -> bool:
         """
         Deletes a price estimation record by ID.
         Returns True if deleted, False otherwise.
         """
         with self.Session() as session:
             try:
-                record = session.get(EstimatedMenuPriceRecord, id)
+                record = session.get(EstimatedMenuPriceRecord, price_estimation_record.id)
                 if not record:
-                    logging.warning(f"No price estimation record found with id: {id}")
+                    logging.warning(f"No price estimation record found with id: {price_estimation_record.id}")
                     return False
                 session.delete(record)
                 session.commit()
-                logging.info(f"Deleted price estimation record with id: {id}")
+                logging.info(f"Deleted price estimation record with id: {price_estimation_record.id}")
                 return True
             except Exception as e:
                 session.rollback()
-                logging.error(f"Failed to delete price estimation record {id}: {e}")
+                logging.error(f"Failed to delete price estimation record {price_estimation_record.id}: {e}")
+                return False
+
+
+
+
+    #--Recipe--
+    def add_recipe(self,
+                 inventory_id:int,
+                 menu_id:int,
+                 inventory_item_amount_usage:Optional[float]=None,
+                 writer:Optional[str]=None,
+                 recipe_note:Optional[str]=None,
+                 ) -> Optional[Recipe]:
+        """ adding new recipe  """
+
+        if inventory_item_amount_usage is not None and inventory_item_amount_usage < 0:
+            logging.error("inventory_item_amount_usage: value cant be negative")
+            return None
+
+        with self.Session() as session:
+            try:
+                if not session.get(Menu, menu_id):
+                    logging.error(f"Menu ID {menu_id} not found")
+                    session.rollback()
+                    return None
+                if not session.get(Inventory, inventory_id):
+                    logging.error(f"Inventory ID {menu_id} not found")
+                    session.rollback()
+                    return None
+
+                new_record = Recipe(
+                    inventory_id=inventory_id,
+                    menu_id=menu_id,
+                    inventory_item_amount_usage=inventory_item_amount_usage,
+                    writer=writer,
+                    recipe_note=recipe_note,
+                )
+                session.add(new_record)
+                session.commit()
+                session.refresh(new_record)
+                logging.info("Recipe added successfully")
+                return new_record
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to add recipe to the database: {e}")
+                return None
+
+    def get_recipe(
+            self,
+            inventory_id: Optional[int]=None,
+            menu_id: Optional[int]=None,
+    ) -> Recipe | list[Recipe] | None:
+        """Get recipe(s) by inventory_id, menu_id, or both
+
+    Args:
+        inventory_id: Filter by inventory item ID
+        menu_id: Filter by menu item ID
+
+    Returns:
+        - Single Recipe if both IDs provided
+        - List of Recipes if one ID provided
+        - None if no matches found or error occurs
+    """
+        if not inventory_id and not menu_id:
+            logging.error("inventory_id or menu_id not provided")
+            return None
+        with (self.Session() as session):
+                try:
+                    if inventory_id and menu_id:
+                        return session.get(Recipe, (inventory_id, menu_id))  # ✅ Direct composite
+                    query = session.query(Recipe)
+                    if inventory_id:
+                        query = query.filter_by(inventory_id=inventory_id)
+                    if menu_id:
+                        query = query.filter_by(menu_id=menu_id)
+
+                    result = query.all()
+                    return cast(list[Recipe], result)
+
+                except Exception as e:
+                    session.rollback()
+                    logging.error(f"Error fetching recipe for inventory_{inventory_id}/menu_{menu_id} : {str(e)}")
+                return None
+
+
+
+
+
+    def edit_recipe(self, recipe:Recipe) -> Optional[Recipe]:
+        """
+        Updates an existing recipe in the database.
+
+        Args:
+            recipe: The Recipe object with updated values.
+                             Must have valid inventory_id and menu_id for existing records.
+
+        Returns:
+            The updated Recipe if successful, None on error.
+        """
+
+        if not recipe.inventory_id or not recipe.menu_id:
+            logging.error("Cannot edit recipe without a valid ID (inventory, menu).")
+            return None
+
+
+        with self.Session() as session:
+            try:
+                existing = session.get(Recipe, (recipe.inventory_id, recipe.menu_id))
+                if not existing:
+                    logging.info(f"No recipe found with ID: {(recipe.inventory_id, recipe.menu_id)} then we added it")
+                merged_record  = session.merge(recipe)
+                session.commit()
+                session.refresh(merged_record )
+                logging.info(f"Successfully updated recipe with ids: {(recipe.inventory_id, recipe.menu_id)}")
+                return merged_record
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to update recipe with ids: {(recipe.inventory_id, recipe.menu_id)}: {e}")
+                return None
+
+    def delete_recipe(self, recipe:Recipe) -> bool:
+        """
+        Deletes a recipe by inventory_id and menu_id.
+        Returns True if deleted, False otherwise.
+        """
+        if not recipe.inventory_id or not recipe.menu_id:
+            logging.error("Cannot edit recipe without a valid ID (inventory, menu).")
+            return False
+        with self.Session() as session:
+
+            try:
+                record_to_delete = session.get(Recipe, (recipe.inventory_id, recipe.menu_id))
+                if record_to_delete:
+                    session.delete(record_to_delete)
+                    session.commit()
+                    logging.info(f"Deleted recipe with id: {(recipe.inventory_id, recipe.menu_id)}")
+                    return True
+                else:
+                    logging.warning(f"Recipe with ids {(recipe.inventory_id, recipe.menu_id)} not found for deletion.")
+                    return False
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to delete recipe {(recipe.inventory_id, recipe.menu_id)}: {e}")
                 return False
 
 
