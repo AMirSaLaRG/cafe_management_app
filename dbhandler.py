@@ -712,7 +712,8 @@ class DbHandler:
             try:
                 existing = session.get(Recipe, (recipe.inventory_id, recipe.menu_id))
                 if not existing:
-                    logging.info(f"No recipe found with ID: {(recipe.inventory_id, recipe.menu_id)} then we added it")
+                    logging.info(f"No recipe found with ID: {(recipe.inventory_id, recipe.menu_id)} ")
+                    return None
                 merged_record  = session.merge(recipe)
                 session.commit()
                 session.refresh(merged_record )
@@ -746,6 +747,103 @@ class DbHandler:
             except Exception as e:
                 session.rollback()
                 logging.error(f"Failed to delete recipe {(recipe.inventory_id, recipe.menu_id)}: {e}")
+                return False
+
+
+    #--Supplier--
+    def add_supplier(self,
+                 name:str,
+                 contact_channel:Optional[str]=None,
+                 contact_address:Optional[str]=None,
+                 ) -> Optional[Supplier]:
+        """ adding new supplier  """
+
+        with self.Session() as session:
+            try:
+                supplier = Supplier(
+                    name=name.lower().strip(),
+                    contact_channel=contact_channel,
+                    contact_address=contact_address,
+                )
+                session.add(supplier)
+                session.commit()
+                session.refresh(supplier)
+                logging.info("Supplier added successfully")
+                return supplier
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to add supplier to the database: {e}")
+                return None
+
+    def get_supplier(
+            self,
+            name:str
+    ) -> Optional[Supplier]:
+        """Get supplier by name,
+        Returns:
+            Supplier object or None on error.
+        """
+        lookup_name = name.lower().strip()
+        with self.Session() as session:
+                try:
+                    return session.query(Supplier).filter_by(name = lookup_name).first()
+
+                except Exception as e:
+                    session.rollback()
+                    logging.error(f"Error fetching supplier {lookup_name}: {str(e)}")
+                return None
+
+    def edit_supplier(self, supplier:Supplier) -> Optional[Supplier]:
+        """
+        Updates an existing supplier in the database.
+
+        Args:
+            supplier: The Supplier object with updated values.
+                             Must have valid id for existing supplier.
+
+        Returns:
+            The updated supplier if successful, None on error.
+        """
+        if not supplier.id:
+            logging.error("Cannot edit supplier without a valid ID.")
+            return None
+        with self.Session() as session:
+            try:
+                existing = session.get(Supplier, supplier.id)
+                if not existing:
+                    logging.info(f"No supplier found with ID: {supplier.id} ")
+                    return None
+                merged_supplier  = session.merge(supplier)
+                session.commit()
+                session.refresh(merged_supplier )
+                logging.info(f"Successfully updated supplier with ids: {supplier.id}")
+                return merged_supplier
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to update supplier with ids: {supplier.id}: {e}")
+                return None
+
+    def delete_supplier(self, supplier:Supplier) -> bool:
+        """
+        Deletes a supplier .
+        Returns True if deleted, False otherwise.
+        """
+
+        with self.Session() as session:
+
+            try:
+                the_supplier = session.get(Supplier, supplier.id)
+                if the_supplier:
+                    session.delete(the_supplier)
+                    session.commit()
+                    logging.info(f"Deleted supplier with id: {supplier.id}")
+                    return True
+                else:
+                    logging.warning(f"supplier with ids {supplier.id} not found for deletion.")
+                    return False
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to delete supplier {suppier.id}: {e}")
                 return False
 
 

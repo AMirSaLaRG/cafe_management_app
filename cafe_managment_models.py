@@ -101,6 +101,7 @@ class Recipe(Base):
     inventory_item_amount_usage = Column(Float)
     writer = Column(String(100))
     recipe_note = Column(String(500))
+    time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     menu_item = relationship("Menu", back_populates='recipe')
     inventory_item = relationship("Inventory", back_populates="recipes")
@@ -110,9 +111,10 @@ class Supplier(Base):
     __tablename__ = "supplier"
 
     id = Column(Integer, primary_key=True)
-    name = Column(String)
+    name = Column(String, nullable=False, unique=True)
     contact_channel = Column(String)
     contact_address = Column(String)
+    time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     orders = relationship("Order", back_populates="supplier")
 
