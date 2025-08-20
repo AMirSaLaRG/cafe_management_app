@@ -134,8 +134,7 @@ def test_supplier_null_values(in_memory_db):
     assert supplier.contact_channel is None
     assert supplier.contact_address is None
 
-    # Verify retrieval works
-    found = in_memory_db.get_supplier("null supplier")
+    found = in_memory_db.get_supplier("Null Supplier")
     assert found != []
     assert found[0].contact_channel is None
     assert found[0].contact_address is None

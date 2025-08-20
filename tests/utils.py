@@ -23,6 +23,7 @@ def crud_cycle_test(db_handler: Any,
     obj = add_func(**create_kwargs)
     assert obj is not None
 
+
     if lookup_fields and lookup_values:
         assert len(lookup_fields) == len(lookup_values)
         # lookup = dict(zip(lookup_fields, lookup_values))

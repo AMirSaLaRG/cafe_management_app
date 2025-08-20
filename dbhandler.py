@@ -29,18 +29,25 @@ class DbHandler:
 
     #--inventory--
     def add_inventory(self, name:str,
+                      category:Optional[str] = None,
                       unit:Optional[str]=None,
                       current_stock:Optional[float]=None,
                       price_per_unit:Optional[float]=None,
                       initial_value:Optional[float]=None,
                       date_of_initial_value:Optional[datetime]=None):
+
+        if name:
+            name = name.lower().strip()
+        if category:
+            category = category.lower().strip()
         with self.Session() as session:
             try:
                 # The timestamp column in your model is "date_of_initial_value".
                 # SQLAlchemy handles the conversion from a Python datetime object to TIMESTAMP.
                 new_item = Inventory(
-                    name=name.strip().lower(),
+                    name=name,
                     unit=unit,
+                    category=category,
                     current_stock=current_stock,
                     price_per_unit=price_per_unit,
                     initial_value=initial_value,
@@ -160,14 +167,21 @@ class DbHandler:
         if value_added_tax is not None and not (0 <= value_added_tax <= 1):
             logging.error("VAT must be between 0-1")
             return None
+        if name:
+            name = name.strip().lower()
+        if size:
+            size = size.strip().lower()
+        if category:
+            category = category.strip().lower()
+
         with self.Session() as session:
             try:
 
                 # The timestamp column in your model is "date_of_initial_value".
                 # SQLAlchemy handles the conversion from a Python datetime object to TIMESTAMP.
                 existing = session.query(Menu).filter_by(
-                    name=name.strip().lower(),
-                    size=size.strip().lower()
+                    name=name,
+                    size=size
                 ).first()
                 if existing:
                     logging.warning(f"Menu item already exists: {name} ({size})")
@@ -175,8 +189,8 @@ class DbHandler:
 
 
                 new_item = Menu(
-                    name=name.strip().lower(),
-                    size=size.strip().lower(),
+                    name=name,
+                    size=size,
                     category=category,
                     current_price=current_price,
                     value_added_tax=value_added_tax,
@@ -750,11 +764,13 @@ class DbHandler:
                  contact_address:Optional[str]=None,
                  ) -> Optional[Supplier]:
         """ adding new supplier  """
+        if name:
+            name = name.strip().lower()
 
         with self.Session() as session:
             try:
                 supplier = Supplier(
-                    name=name.lower().strip(),
+                    name=name,
                     contact_channel=contact_channel,
                     contact_address=contact_address,
                 )
@@ -777,6 +793,7 @@ class DbHandler:
         Returns:
             Supplier object or None on error.
         """
+
 
         with self.Session() as session:
                 try:
@@ -862,6 +879,11 @@ class DbHandler:
         if date is None:
             date = datetime.now()
 
+        if buyer:
+            buyer = buyer.strip()
+        if payer:
+            payer = payer.strip()
+
         with self.Session() as session:
             try:
                 if supplier_id:
@@ -869,10 +891,7 @@ class DbHandler:
                     if not check:
                         logging.info(f"No supplier found with supplier id: {supplier_id}")
                         return None
-                if buyer:
-                    buyer = buyer.lower().strip()
-                if payer:
-                    payer = payer.lower().strip()
+
                 new_order = Order(
                     supplier_id=supplier_id,
                     date=date,
@@ -913,6 +932,7 @@ class DbHandler:
         Returns:
             List of matching orders (empty list if no matches or no filters provided)
         """
+
 
         with self.Session() as session:
                 try:
@@ -984,7 +1004,7 @@ class DbHandler:
 
     def delete_order(self, order:Order) -> bool:
         """
-        Deletes a supplier .
+        Deletes a order .
         Returns True if deleted, False otherwise.
         """
 
@@ -1007,6 +1027,174 @@ class DbHandler:
 
 
 
+    #--ship--
+    def add_ship(self,
+                     order_id:int,
+                     shipper:Optional[str]=None,
+                     price:Optional[float]=None,
+                     receiver:Optional[str]=None,
+                     payer:Optional[str]=None,
+                     date:Optional[datetime]=None,
+                     description:Optional[str]=None,
+                 ) -> Optional[Ship]:
+        """ adding new supplier  """
+        if date is None:
+            date = datetime.now()
+        if shipper:
+            shipper = shipper.strip().lower()
+        if payer:
+            payer = payer.strip().lower()
+        if receiver:
+            receiver = receiver.strip().lower()
+
+        with self.Session() as session:
+            try:
+                if order_id:
+                    check = session.get(Order, order_id)
+                    if not check:
+                        logging.info(f"No order found with order id: {order_id}")
+                        return None
+
+                new_ship = Ship(
+                    order_id=order_id,
+                    shipper=shipper,
+                    price=price,
+                    receiver=receiver,
+                    payer=payer,
+                    date=date,
+                    description=description,
+                )
+                session.add(new_ship)
+                session.commit()
+                session.refresh(new_ship)
+                logging.info("ship added successfully")
+                return new_ship
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to add ship to the database: {e}")
+                return None
+
+    def get_ship(
+            self,
+            order_id: Optional[int] = None,
+            shipper: Optional[str]=None,
+            receiver:Optional[str]=None,
+            payer: Optional[str]=None,
+            from_date: Optional[datetime]=None,
+            to_date: Optional[datetime]=None,
+            row_num: Optional[int]=None,
+
+    ) -> list[Ship]:
+        """Get ship with optional filters
+
+        Args:
+            order_id: filter by order id
+            shipper: Filter by shipper name (case-insensitive)
+            payer: Filter by payer name (case-insensitive)
+            receiver: Filter by receiver name (case-insensitive)
+            from_date: Filter ships from this date
+            to_date: Filter ships to this date
+            row_num: number of data you want to get if not give back all
+
+        Returns:
+            List of matching ships (empty list if no matches or no filters provided)
+        """
+
+        with self.Session() as session:
+                try:
+                    query = session.query(Ship).order_by(Ship.date.desc())
+
+                    if order_id:
+                        check = session.get(Order, order_id)
+                        if not check:
+                            logging.info(f"No order found with order_id: {order_id}")
+                            return []
+                        query = query.filter_by(order_id=order_id)
+
+                    if shipper:
+                        shipper = shipper.strip().lower()
+                        query = query.filter_by(shipper=shipper)
+
+                    if receiver:
+                        receiver = receiver.strip().lower()
+                        query = query.filter_by(receiver=receiver)
+
+                    if payer:
+                        payer = payer.strip().lower()
+                        query = query.filter_by(payer=payer)
+
+                    if from_date:
+                        query = query.filter(Ship.date >= from_date)
+                    if to_date:
+                        query = query.filter(Ship.date <= to_date)
+
+                    if row_num:
+                        query = query.limit(row_num)
+
+                    result = query.all()
+                    logging.info(f"Found {len(result)} ship")
+
+                    return cast(List[Ship], result)
+                except Exception as e:
+                    session.rollback()
+                    logging.error(f"Error fetching ship: {str(e)}")
+                    return []
+
+    def edit_ship(self, ship:Ship) -> Optional[Ship]:
+        """
+        Updates an existing ship in the database.
+
+        Args:
+            ship: The Ship object with updated values.
+                             Must have valid id for existing Ship.
+
+        Returns:
+            The updated ship if successful, None on error.
+        """
+        if not ship.id:
+            logging.error("Cannot edit ship without a valid ID.")
+            return None
+        with self.Session() as session:
+            try:
+                existing = session.get(Ship, ship.id)
+                if not existing:
+                    logging.info(f"No ship found with ID: {ship.id} ")
+                    return None
+                merged_ship  = session.merge(ship)
+                session.commit()
+                session.refresh(merged_ship )
+                logging.info(f"Successfully updated ship with ids: {ship.id}")
+                return merged_ship
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to update ship with ids: {ship.id}: {e}")
+                return None
+
+    def delete_ship(self, ship:Ship) -> bool:
+        """
+        Deletes a ship .
+        Returns True if deleted, False otherwise.
+        """
+
+        with self.Session() as session:
+
+            try:
+                the_ship = session.get(Ship, ship.id)
+                if the_ship:
+                    session.delete(the_ship)
+                    session.commit()
+                    logging.info(f"Deleted ship with id: {ship.id}")
+                    return True
+                else:
+                    logging.warning(f"ship with ids {ship.id} not found for deletion.")
+                    return False
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to delete ship {ship.id}: {e}")
+                return False
+
+
+
 
 db = DbHandler()
-
+#todo in update later the lower strip

@@ -118,7 +118,7 @@ class Supplier(Base):
 
     orders = relationship("Order", back_populates="supplier")
 
-
+#Done
 class Order(Base):
     __tablename__ = "order"
 
@@ -128,6 +128,8 @@ class Order(Base):
     buyer= Column(String, nullable=False)
     payer = Column(String)
     description = Column(String(500))
+    time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
 
     supplier = relationship("Supplier", back_populates="orders")
     ship = relationship("Ship", back_populates="order")
@@ -144,6 +146,9 @@ class Ship(Base):
     payer = Column(String)
     date = Column(DateTime)
     description = Column(String(500))
+
+    time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
 
     order = relationship("Order", back_populates="ship")
 
