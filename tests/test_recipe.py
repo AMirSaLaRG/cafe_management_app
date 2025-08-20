@@ -82,10 +82,10 @@ def test_get_recipe(in_memory_db, setup_recipe_dependencies):
         inventory_id=inventory_id,
         menu_id=menu_id
     )
-    assert retrieved_recipe is not None
-    assert isinstance(retrieved_recipe, Recipe)
-    assert retrieved_recipe.inventory_id == inventory_id
-    assert retrieved_recipe.menu_id == menu_id
+    assert retrieved_recipe != []
+    assert isinstance(retrieved_recipe[0], Recipe)
+    assert retrieved_recipe[0].inventory_id == inventory_id
+    assert retrieved_recipe[0].menu_id == menu_id
 
     # Test getting recipes with only inventory_id
     retrieved_recipes_by_inv = in_memory_db.get_recipe(inventory_id=inventory_id)
@@ -101,13 +101,13 @@ def test_get_recipe(in_memory_db, setup_recipe_dependencies):
     assert len(retrieved_recipes_by_menu) == 1
     assert retrieved_recipes_by_menu[0].menu_id == menu_id
 
-    # Test no IDs provided (should return None)
+    # Test no IDs provided (should not return empty)
     no_id_recipe = in_memory_db.get_recipe()
-    assert no_id_recipe is None
+    assert no_id_recipe != []
 
     # Test with non-existent IDs (should return None or empty list)
     non_existent_recipe = in_memory_db.get_recipe(inventory_id=999, menu_id=999)
-    assert non_existent_recipe is None
+    assert non_existent_recipe == []
 
     non_existent_list = in_memory_db.get_recipe(inventory_id=999)
     assert non_existent_list == []
@@ -164,7 +164,7 @@ def test_delete_recipe(in_memory_db, setup_recipe_dependencies):
         inventory_id=inventory_id,
         menu_id=menu_id
     )
-    assert gone_recipe is None
+    assert gone_recipe == []
 
     # Test deleting a non-existent recipe (should return False)
     non_existent_delete = in_memory_db.delete_recipe(

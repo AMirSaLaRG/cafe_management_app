@@ -56,21 +56,35 @@ class DbHandler:
                 logging.error(f"Failed to add inventory item to the database: {e}")
                 return None
 
-    def get_inventory(self, name:str) -> Optional[Inventory]:
-        """find an inventory by name"""
+    def get_inventory(self,
+                      name:Optional[str]=None,
+                      row_num:Optional[int]=None) -> list[Inventory]:
+        """Find inventory item(s) with optional filters
+
+        Args:
+            name: Inventory item name (case-insensitive)
+            row_num: Maximum number of records to return
+
+        Returns:
+            List of Inventory objects (empty list if no matches found)
+        """
 
         with self.Session() as session:
             try:
-                the_item = session.query(Inventory).filter_by(name=name.strip().lower()).first()
-                if the_item:
-                    logging.info(f"Found inventory item with name: {name}")
-                    return the_item
-                logging.warning(f"No inventory item found with name: {name}")
-                return None
+                query = session.query(Inventory).order_by(Inventory.time_create.desc())
+                if name:
+                    lookup_name = name.strip().lower()
+                    query = query.filter_by(name=lookup_name)
+                if row_num:
+                    query = query.limit(row_num)
+
+                result = query.all()
+                logging.info(f"Found {len(result)} inventory items")
+                return cast(List[Inventory], result)
             except Exception as e:
                 session.rollback()
-                logging.error(f"Failed to find inventory item with the name: {name}")
-                return None
+                logging.error(f"Failed to find inventory item(s): {e}")
+                return []
 
 
     def edit_inventory(self, inventory:Inventory) -> Optional[Inventory]:
@@ -179,41 +193,43 @@ class DbHandler:
                 logging.error(f"Failed to add menu item to the database: {e}")
                 return None
 
-    def get_menu(self, name:str, size:str="M") -> Optional[Menu]:
-        """find a menu by name and size
+    def get_menu(self, name:Optional[str]=None,
+                 size:Optional[str]=None,
+                 row_num:Optional[int]=None) -> list[Menu]:
+        """Get menu items with optional filters
+
         Args:
-        name: Menu item name (case-insensitive)
-        size: If provided, searches for exact name+size match.
-              If None, returns first item matching name.
+            name: Menu item name (case-insensitive)
+            size: If provided, searches for exact name+size match
+            row_num: Maximum number of records to return
 
         Returns:
-            Menu object if found, None otherwise
+            List of Menu objects (empty list if no matches found or error occurs)
         """
 
         with (self.Session() as session):
             try:
+                query = session.query(Menu).order_by(Menu.time_create.desc())
 
-                the_item: Optional[Menu] = session.query(Menu).filter_by(
-                    name=name.strip().lower(),
-                    size=size.strip().lower()
-                ).first()
+                if name:
+                    lookup_name = name.strip().lower()
+                    query = query.filter_by(name=lookup_name)
 
+                if size:
+                    lookup_size = size.strip().lower()
+                    query = query.filter_by(size=lookup_size)
 
-                if the_item:
-                    logging.info(f"Found menu item with name: {name} size: {size}")
-                    return the_item
+                if row_num:
+                    query = query.limit(row_num)
 
-                check = session.query(Menu).filter_by(name=name.strip().lower()).all()
-                if check:
-                    sizes = [item.size for item in check]
-                    logging.warning(f"Found menu item with name: {name} sizes: {sizes}, there is not any {size}")
-                    return None
-                logging.warning(f"No inventory item found with name: {name} size: {size}")
-                return None
+                result = query.all()
+                logging.info(f"Found {len(result)} menu items")
+                return cast(list[Menu], result)
+
             except Exception as e:
                 session.rollback()
-                logging.error(f"Failed to find inventory item with the name: {name}")
-                return None
+                logging.error(f"Failed to find menu item")
+                return []
 
     def edit_menu(self, menu:Menu) -> Optional[Menu]:
         """
@@ -330,55 +346,44 @@ class DbHandler:
 
     def get_inventoryrecord(
             self,
-            inventory_id: int,
-            last: bool = True,
+            inventory_id: Optional[int]=None,
             from_date: Optional[datetime] = None,
-            to_date: Optional[datetime] = None
-    ) -> Union[Optional[InventoryRecord], List[InventoryRecord]]:
-        """Get inventory record(s) for an inventory item
+            to_date: Optional[datetime] = None,
+            row_num: Optional[int]=None,
+    ) ->List[InventoryRecord]:
+        """Get inventory record(s) for inventory items
 
         Args:
-            inventory_id: Inventory item ID to filter by
-            last: If True, returns only the most recent record
-                  If False, returns all records (optionally filtered by date range)
+            inventory_id: Inventory ID to filter by (None for all inventories)
             from_date: Optional start date for filtering records
             to_date: Optional end date for filtering records
+            row_num: Maximum number of records to return
 
         Returns:
-            - If last=True: Single InventoryRecord or None
-            - If last=False: List of InventoryRecords (may be empty)
+            List of InventoryRecord objects (empty list if no matches found or error occurs)
         """
 
         with (self.Session() as session):
             try:
-                query = session.query(InventoryRecord).filter_by(
-                    inventory_id=inventory_id
-                )
+                query = session.query(InventoryRecord).order_by(InventoryRecord.date.desc())
 
+                if inventory_id:
+                    query = query.filter_by(inventory_id=inventory_id)
                 if from_date:
                     query = query.filter(InventoryRecord.date >= from_date)
                 if to_date:
                     query = query.filter(InventoryRecord.date <= to_date)
+                if row_num:
+                    query = query.limit(row_num)
 
-                query = query.order_by(InventoryRecord.date.desc())
+                result = query.all()
+                logging.info(f"Found {len(result)} inventory records")
+                return cast(List[InventoryRecord], result)
 
-                if last:
-                    # Get single most recent record
-                    record: Optional[InventoryRecord] = query.first()
-                    if record:
-                        logging.info(f"Found last record from {record.date}")
-                        return record
-                    logging.warning(f"No records found for inventory ID {inventory_id}")
-                    return None
-                else:
-                    # Get all matching records
-                    records = query.all()
-                    logging.info(f"Found {len(records)} records for inventory ID {inventory_id}")
-                    return records
             except Exception as e:
                 session.rollback()
-                logging.error(f"Error fetching records for inventory {inventory_id}: {str(e)}")
-                return None if last else []
+                logging.error(f"Error fetching records for inventory: {str(e)}")
+                return []
 
     def edit_inventoryrecord(self, inventory_record:InventoryRecord) -> Optional[InventoryRecord]:
         """
@@ -504,55 +509,44 @@ class DbHandler:
 
     def get_estimatedmenupricerecord(
             self,
-            menu_id: int,
-            last: bool = True,
+            menu_id: Optional[int] = None,
             from_date: Optional[datetime] = None,
-            to_date: Optional[datetime] = None
-    ) -> Union[Optional[EstimatedMenuPriceRecord], List[EstimatedMenuPriceRecord]]:
-        """Get price estimation record(s) for an inventory item
+            to_date: Optional[datetime] = None,
+            row_num: Optional[int] = None,
+    ) -> list[EstimatedMenuPriceRecord]:
+        """Get price estimation records for menu items
 
         Args:
-            menu_id: menu item ID to filter by
-            last: If True, returns only the most recent record
-                  If False, returns all records (optionally filtered by date range)
+            menu_id: menu item ID to filter by (None for all menus)
             from_date: Optional start date for filtering records
             to_date: Optional end date for filtering records
+            row_num: maximum number of records to return
 
         Returns:
-            - If last=True: Single EstimatedMenuPriceRecord or None
-            - If last=False: List of EstimatedMenuPriceRecord (may be empty)
+            List of EstimatedMenuPriceRecord objects (empty list if no matches found)
         """
 
         with (self.Session() as session):
             try:
-                query = session.query(EstimatedMenuPriceRecord).filter_by(
-                    menu_id=menu_id
-                )
-
+                query = session.query(EstimatedMenuPriceRecord).order_by(EstimatedMenuPriceRecord.from_date.desc())
+                if menu_id:
+                    query = query.filter_by(menu_id=menu_id)
                 if from_date:
                     query = query.filter(EstimatedMenuPriceRecord.from_date >= from_date)
                 if to_date:
                     query = query.filter(EstimatedMenuPriceRecord.from_date <= to_date)
+                if row_num:
+                    query = query.limit(row_num)
 
-                query = query.order_by(EstimatedMenuPriceRecord.from_date.desc())
+                result = query.all()
+                logging.info(f"Found {len(result)} price estimation records")
+                return cast(List[EstimatedMenuPriceRecord], result)
 
-                if last:
-                    # Get single most recent record
-                    record: Optional[EstimatedMenuPriceRecord] = query.first()
-                    if record:
-                        logging.info(f"Found last record from {record.from_date}")
-                        return record
-                    logging.warning(f"No records found for menu ID {menu_id}")
-                    return None
-                else:
-                    # Get all matching records
-                    records = query.all()
-                    logging.info(f"Found {len(records)} records for menu ID {menu_id}")
-                    return records
+
             except Exception as e:
                 session.rollback()
-                logging.error(f"Error fetching records for menu {menu_id}: {str(e)}")
-                return None if last else []
+                logging.error(f"Error fetching records for menu: {str(e)}")
+                return []
 
     def edit_estimatedmenupricerecord(self, price_estimation_record:EstimatedMenuPriceRecord) -> Optional[EstimatedMenuPriceRecord]:
         """
@@ -654,38 +648,37 @@ class DbHandler:
             self,
             inventory_id: Optional[int]=None,
             menu_id: Optional[int]=None,
-    ) -> Recipe | list[Recipe] | None:
-        """Get recipe(s) by inventory_id, menu_id, or both
+            row_num: Optional[int]=None,
+    ) -> list[Recipe]:
+        """Get recipes can be filtered by inventory_id, menu_id, or both
 
-    Args:
-        inventory_id: Filter by inventory item ID
-        menu_id: Filter by menu item ID
+        Args:
+            inventory_id: Filter by inventory item ID
+            menu_id: Filter by menu item ID
+            row_num: return at most by row number
 
-    Returns:
-        - Single Recipe if both IDs provided
-        - List of Recipes if one ID provided
-        - None if no matches found or error occurs
-    """
-        if not inventory_id and not menu_id:
-            logging.error("inventory_id or menu_id not provided")
-            return None
+        Returns:
+            List of Recipes (empty list if no matches found or error occurs)
+        """
+
         with (self.Session() as session):
                 try:
-                    if inventory_id and menu_id:
-                        return session.get(Recipe, (inventory_id, menu_id))  # ✅ Direct composite
-                    query = session.query(Recipe)
+                    query = session.query(Recipe).order_by(Recipe.time_create.desc())
                     if inventory_id:
                         query = query.filter_by(inventory_id=inventory_id)
                     if menu_id:
                         query = query.filter_by(menu_id=menu_id)
+                    if row_num:
+                        query = query.limit(row_num)
 
                     result = query.all()
+                    logging.info(f"Found {len(result)} recipes")
                     return cast(list[Recipe], result)
 
                 except Exception as e:
                     session.rollback()
-                    logging.error(f"Error fetching recipe for inventory_{inventory_id}/menu_{menu_id} : {str(e)}")
-                return None
+                    logging.error(f"Error fetching recipe : {str(e)}")
+                    return []
 
 
 
@@ -777,21 +770,30 @@ class DbHandler:
 
     def get_supplier(
             self,
-            name:str
-    ) -> Optional[Supplier]:
-        """Get supplier by name,
+            name:Optional[str] = None,
+            row_num: Optional[int]=None,
+    ) -> list[Supplier]:
+        """can filter supplier by name can make number of supplier returns,
         Returns:
             Supplier object or None on error.
         """
-        lookup_name = name.lower().strip()
+
         with self.Session() as session:
                 try:
-                    return session.query(Supplier).filter_by(name = lookup_name).first()
+                    query = session.query(Supplier).order_by(Supplier.time_create.desc())
+                    if name:
+                        lookup_name = name.lower().strip()
+                        query = query.filter_by(name = lookup_name)
+                    if row_num:
+                        query = query.limit(row_num)
+                    result = query.all()
+                    logging.info(f"Found {len(result)} suppliers")
+                    return cast(List[Supplier], result)
 
                 except Exception as e:
                     session.rollback()
                     logging.error(f"Error fetching supplier {lookup_name}: {str(e)}")
-                return None
+                return []
 
     def edit_supplier(self, supplier:Supplier) -> Optional[Supplier]:
         """
@@ -843,7 +845,164 @@ class DbHandler:
                     return False
             except Exception as e:
                 session.rollback()
-                logging.error(f"Failed to delete supplier {suppier.id}: {e}")
+                logging.error(f"Failed to delete supplier {supplier.id}: {e}")
+                return False
+
+
+
+    #--order--
+    def add_order(self,
+                     supplier_id:int,
+                     date:Optional[datetime]=None,
+                     buyer:Optional[str]=None,
+                     payer:Optional[str]=None,
+                     description:Optional[str]=None,
+                 ) -> Optional[Order]:
+        """ adding new supplier  """
+        if date is None:
+            date = datetime.now()
+
+        with self.Session() as session:
+            try:
+                if supplier_id:
+                    check = session.get(Supplier, supplier_id)
+                    if not check:
+                        logging.info(f"No supplier found with supplier id: {supplier_id}")
+                        return None
+                if buyer:
+                    buyer = buyer.lower().strip()
+                if payer:
+                    payer = payer.lower().strip()
+                new_order = Order(
+                    supplier_id=supplier_id,
+                    date=date,
+                    buyer=buyer,
+                    payer=payer,
+                    description=description,
+                )
+                session.add(new_order)
+                session.commit()
+                session.refresh(new_order)
+                logging.info("Order added successfully")
+                return new_order
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to add order to the database: {e}")
+                return None
+
+    def get_order(
+            self,
+            buyer: Optional[str] = None,
+            payer: Optional[str]=None,
+            supplier:Optional[str]=None,
+            from_date: Optional[datetime]=None,
+            to_date: Optional[datetime]=None,
+            row_num: Optional[int]=None,
+
+    ) -> list[Order]:
+        """Get orders with optional filters
+
+        Args:
+            buyer: Filter by buyer name (case-insensitive)
+            payer: Filter by payer name (case-insensitive)
+            supplier: Filter by supplier name
+            from_date: Filter orders from this date
+            to_date: Filter orders to this date
+            row_num: number of data you want to get if not give back all
+
+        Returns:
+            List of matching orders (empty list if no matches or no filters provided)
+        """
+
+        with self.Session() as session:
+                try:
+                    query = session.query(Order).order_by(Order.date.desc())
+
+                    if buyer:
+                        lookup_buyer = buyer.lower().strip()
+                        query = query.filter_by(buyer=lookup_buyer)
+
+                    if payer:
+                        lookup_payer = payer.lower().strip()
+                        query = query.filter_by(payer=lookup_payer)
+                    if supplier:
+                        lookup_supplier = supplier.lower().strip()
+                        the_supplier = session.query(Supplier).filter_by(name = lookup_supplier).first()
+                        if the_supplier:
+                            supplier_id = the_supplier.id
+                            query = query.filter_by(supplier_id=supplier_id)
+                        else:
+                            logging.info(f"No supplier found with name: {supplier}")
+                            return []
+                    if from_date:
+                        query = query.filter(Order.date >= from_date)
+                    if to_date:
+                        query = query.filter(Order.date <= to_date)
+
+                    if row_num:
+                        query = query.limit(row_num)
+
+                    result = query.all()
+                    logging.info(f"Found {len(result)} orders")
+
+                    return cast(List[Order], result)
+
+                except Exception as e:
+                    session.rollback()
+                    logging.error(f"Error fetching orders: {str(e)}")
+                    return []
+
+    def edit_order(self, order:Order) -> Optional[Order]:
+        """
+        Updates an existing order in the database.
+
+        Args:
+            order: The Order object with updated values.
+                             Must have valid id for existing order.
+
+        Returns:
+            The updated supplier if successful, None on error.
+        """
+        if not order.id:
+            logging.error("Cannot edit order without a valid ID.")
+            return None
+        with self.Session() as session:
+            try:
+                existing = session.get(Order, order.id)
+                if not existing:
+                    logging.info(f"No order found with ID: {order.id} ")
+                    return None
+                merged_order  = session.merge(order)
+                session.commit()
+                session.refresh(merged_order )
+                logging.info(f"Successfully updated order with ids: {order.id}")
+                return merged_order
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to update order with ids: {order.id}: {e}")
+                return None
+
+    def delete_order(self, order:Order) -> bool:
+        """
+        Deletes a supplier .
+        Returns True if deleted, False otherwise.
+        """
+
+        with self.Session() as session:
+
+            try:
+                the_order = session.get(Order, order.id)
+                if the_order:
+                    session.delete(the_order)
+                    session.commit()
+                    logging.info(f"Deleted order with id: {order.id}")
+                    return True
+                else:
+                    logging.warning(f"order with ids {order.id} not found for deletion.")
+                    return False
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to delete order {order.id}: {e}")
                 return False
 
 

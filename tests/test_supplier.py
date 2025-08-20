@@ -43,9 +43,9 @@ def test_supplier_case_insensitive_lookup(in_memory_db):
 
     for test_name in test_cases:
         found = in_memory_db.get_supplier(test_name)
-        assert found is not None
-        assert found.name == "awesome supplier llc"  # Stored lowercase
-        assert found.id == supplier.id
+        assert found != []
+        assert found[0].name == "awesome supplier llc"  # Stored lowercase
+        assert found[0].id == supplier.id
 
 
 def test_supplier_duplicate_name(in_memory_db):
@@ -118,9 +118,9 @@ def test_supplier_get_all_functionality(in_memory_db):
     # Verify we can retrieve each one
     for i, expected_supplier in enumerate(suppliers):
         found = in_memory_db.get_supplier(f"supplier {i}")
-        assert found is not None
-        assert found.id == expected_supplier.id
-        assert found.name == f"supplier {i}"  # Lowercase
+        assert found != []
+        assert found[0].id == expected_supplier.id
+        assert found[0].name == f"supplier {i}"  # Lowercase
 
 
 def test_supplier_null_values(in_memory_db):
@@ -136,6 +136,6 @@ def test_supplier_null_values(in_memory_db):
 
     # Verify retrieval works
     found = in_memory_db.get_supplier("null supplier")
-    assert found is not None
-    assert found.contact_channel is None
-    assert found.contact_address is None
+    assert found != []
+    assert found[0].contact_channel is None
+    assert found[0].contact_address is None

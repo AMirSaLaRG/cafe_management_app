@@ -4,7 +4,7 @@ def crud_cycle_test(db_handler: Any,
                     model_class: Any,
                     create_kwargs: Dict[str, Any],
                     update_kwargs: Dict[str, Any],
-                    lookup_fields:List[str],
+                    lookup_fields:Optional[list[str]] = None,
                     lookup_values:Optional[List[Any]]=None) -> None:
     """
     Generic CRUD cycle test for any SQLAlchemy model handler by DbHandler
@@ -23,16 +23,34 @@ def crud_cycle_test(db_handler: Any,
     obj = add_func(**create_kwargs)
     assert obj is not None
 
-    if lookup_values is None:
-        lookup_values = [getattr(obj, lookup_field) for lookup_field in lookup_fields]
+    if lookup_fields and lookup_values:
+        assert len(lookup_fields) == len(lookup_values)
+        # lookup = dict(zip(lookup_fields, lookup_values))
+        lookup = {lookup_fields[lookup_fields.index(lookup_field)]: lookup_values[lookup_fields.index(lookup_field)]
+                  for lookup_field in lookup_fields}
 
-    lookup = {lookup_fields[lookup_fields.index(lookup_field)]: lookup_values[lookup_fields.index(lookup_field)] for lookup_field in lookup_fields}
+    elif lookup_fields :
+        lookup_values = [getattr(obj, lookup_field) for lookup_field in lookup_fields]
+        lookup = dict(zip(lookup_fields, lookup_values))
+    else:
+        lookup = None
+
     #___READ___
     get_func = getattr(db_handler, f"get_{model_name}")
-    fetched = get_func(**lookup)
-    assert fetched is not None
-    for lookup_field in lookup_fields:
-        assert getattr(fetched, lookup_field) == lookup_values[lookup_fields.index(lookup_field)]
+    if lookup:
+        fetched = get_func(**lookup)
+    else:
+        fetched = get_func()
+    assert fetched != []
+    assert len(fetched) == 1
+    fetched = fetched[0]
+    if lookup_fields:
+        for lookup_field in lookup_fields:
+            value_lookup_field = getattr(fetched, lookup_field)
+            value_provided = lookup_values[lookup_fields.index(lookup_field)]
+            if type(value_provided) == str:
+                value_provided = value_provided.strip().lower()
+            assert value_lookup_field == value_provided
 
     #___UPDATE___
     for key, value in update_kwargs.items():
@@ -46,9 +64,12 @@ def crud_cycle_test(db_handler: Any,
 
     #___DELETE___
     delete_func = getattr(db_handler, f"delete_{model_name}")
-    deleted = delete_func(fetched)
+    deleted = delete_func(updated)
     assert deleted is True
 
-    gone = get_func(**lookup)
-    assert gone is None
+    if lookup:
+        gone = get_func(**lookup)
+    else:
+        gone = get_func()
+    assert gone == []
 

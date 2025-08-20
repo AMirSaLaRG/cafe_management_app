@@ -97,7 +97,6 @@ def test_estimatedmenupricerecord_date_ranges(in_memory_db):
     # Test date range filtering (should get 2 records)
     records = in_memory_db.get_estimatedmenupricerecord(
         menu_id=menu_item.id,
-        last=False,
         from_date=base_date + timedelta(days=14),
         to_date=base_date + timedelta(days=28)
     )
@@ -132,12 +131,11 @@ def test_estimatedmenupricerecord_get_last(in_memory_db):
     # Verify the newest record is returned
     last_record = in_memory_db.get_estimatedmenupricerecord(
         menu_id=menu_item.id,
-        last=True
     )
 
-    assert last_record is not None
-    assert last_record.from_date == test_dates[0]  # Today (most recent)
-    assert last_record.sales_forecast == 50
+    assert last_record != []
+    assert last_record[0].from_date == test_dates[0]  # Today (most recent)
+    assert last_record[0].sales_forecast == 50
 
 def test_estimatedmenupricerecord_profit_warning(in_memory_db):
     """Test warning is logged for negative profit"""

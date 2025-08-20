@@ -94,7 +94,6 @@ def test_inventory_records_date_range_filtering(in_memory_db):
     # Get records in date range
     records = in_memory_db.get_inventoryrecord(
         inventory_id=inventory_item.id,
-        last=False,
         from_date=from_date,
         to_date=to_date
     )
@@ -147,7 +146,6 @@ def test_inventory_records_get_all_with_date_range(in_memory_db):
     # Test last=False with date range
     records = in_memory_db.get_inventoryrecord(
         inventory_id=inventory_item.id,
-        last=False,
         from_date=from_date,
         to_date=to_date
     )
@@ -203,7 +201,6 @@ def test_inventory_records_get_all_records(in_memory_db):
     # Test last=False without date range
     records = in_memory_db.get_inventoryrecord(
         inventory_id=inventory_item.id,
-        last=False
     )
 
     # Verify results

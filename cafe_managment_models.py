@@ -125,7 +125,7 @@ class Order(Base):
     id = Column(Integer, primary_key=True)
     supplier_id = Column(ForeignKey('supplier.id'))
     date = Column(DateTime)
-    buyer= Column(String)
+    buyer= Column(String, nullable=False)
     payer = Column(String)
     description = Column(String(500))
 
