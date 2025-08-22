@@ -880,9 +880,9 @@ class DbHandler:
             date = datetime.now()
 
         if buyer:
-            buyer = buyer.strip()
+            buyer = buyer.strip().lower()
         if payer:
-            payer = payer.strip()
+            payer = payer.strip().lower()
 
         with self.Session() as session:
             try:
@@ -1191,6 +1191,189 @@ class DbHandler:
             except Exception as e:
                 session.rollback()
                 logging.error(f"Failed to delete ship {ship.id}: {e}")
+                return False
+
+
+
+
+    #--SupplyRecord--
+
+    def add_supplyrecord(self,
+                     inventory_item_id:int,
+                     ship_id:int,
+                     price:Optional[float]=None,
+                     box_amount:Optional[float]=None,
+                     box_price:Optional[float]=None,
+                     box_discount:Optional[float]=None,
+                     num_of_box:Optional[float]=None,
+                     description:Optional[str]=None,
+                 ) -> Optional[SupplyRecord]:
+        """ adding new supplyrecord  """
+        if not ship_id or not inventory_item_id:
+            logging.error("Cannot add supplyrecord without valid ship_id or inventory_item_id")
+            return None
+
+        if price is not None and price < 0:
+            logging.error("Cannot add supplyrecord with negative price")
+            return None
+        if box_amount is not None and box_amount < 0:
+            logging.error("Cannot add supplyrecord with negative box_amount")
+            return None
+        if box_price is not None and box_price < 0:
+            logging.error("Cannot add supplyrecord with negative box_price")
+            return None
+        if box_discount is not None and box_discount < 0:
+            logging.error("Cannot add supplyrecord with negative box_discount")
+            return None
+        if num_of_box is not None and num_of_box < 0:
+            logging.error("Cannot add supplyrecord with negative num_of_box")
+            return None
+
+
+        with self.Session() as session:
+            try:
+                if ship_id:
+                    check = session.get(Ship, ship_id)
+                    if not check:
+                        logging.info(f"No ship found with ship id: {ship_id}")
+                        return None
+                if inventory_item_id:
+                    check = session.get(Inventory, inventory_item_id)
+                    if not check:
+                        logging.info(f"No inventory item found with order id: {inventory_item_id}")
+                        return None
+
+                new_supply_record = SupplyRecord(
+                    inventory_item_id=inventory_item_id,
+                    ship_id=ship_id,
+                    price=price,
+                    box_amount=box_amount,
+                    box_price=box_price,
+                    box_discount=box_discount,
+                    num_of_box=num_of_box,
+                    description=description
+                )
+                session.add(new_supply_record)
+                session.commit()
+                session.refresh(new_supply_record)
+                logging.info("supply record added successfully")
+                return new_supply_record
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to add supply record to the database: {e}")
+                return None
+
+    def get_supplyrecord(
+            self,
+            inventory_item_id: Optional[int] = None,
+            ship_id: Optional[int] = None,
+            row_num: Optional[int]=None,
+
+    ) -> list[SupplyRecord]:
+        """Get supply record with optional filters
+
+        Args:
+            inventory_item_id: filter by inventory id
+            ship_id: filter by ship id
+            row_num: number of data you want to get if not give back all
+
+        Returns:
+            List of matching supply records (empty list if no matches or no filters provided)
+        """
+        with self.Session() as session:
+                try:
+                    query = session.query(SupplyRecord).order_by(SupplyRecord.time_create.desc())
+
+                    if inventory_item_id:
+                        check = session.get(Inventory, inventory_item_id)
+                        if not check:
+                            logging.info(f"No item in inventory with inventory_item_id: {inventory_item_id}")
+                            return []
+                        query = query.filter_by(inventory_item_id=inventory_item_id)
+
+                    if ship_id:
+                        check = session.get(Ship, ship_id)
+                        if not check:
+                            logging.info(f"No ship found with ship_id: {ship_id}")
+                            return []
+                        query = query.filter_by(ship_id=ship_id)
+
+                    if row_num:
+                        query = query.limit(row_num)
+
+                    result = query.all()
+                    logging.info(f"Found {len(result)} supply records")
+
+                    return cast(List[SupplyRecord], result)
+
+                except Exception as e:
+                    session.rollback()
+                    logging.error(f"Error fetching supply records: {str(e)}")
+                    return []
+
+
+    def edit_supplyrecord(self, supply_record:SupplyRecord) -> Optional[SupplyRecord]:
+        """
+        Updates an existing supply record in the database.
+
+        Args:
+            supply_record: The SupplyRecord object with updated values.
+                         Must have valid composite key (inventory_item_id, ship_id).
+
+        Returns:
+            The updated SupplyRecord if successful, None on error.
+        """
+        if not supply_record.id:
+            logging.info("No supply record id")
+            return None
+        if not supply_record.inventory_item_id or not supply_record.ship_id:
+            logging.error("Cannot edit supply record without inventory item id and ship id.")
+            return None
+        with self.Session() as session:
+            try:
+                existing = session.get(SupplyRecord, supply_record.id)
+                if not existing:
+                    logging.info(f"No supply record found with ID: {supply_record.id} ")
+                    return None
+                merged_supply_record  = session.merge(supply_record)
+                session.commit()
+                session.refresh(merged_supply_record )
+                logging.info(f"Successfully updated supply record with ids: {supply_record.id}")
+                return merged_supply_record
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to update supply record with ids: {supply_record.id}: {e}")
+                return None
+
+    def delete_supplyrecord(self, supply_record:SupplyRecord) -> bool:
+        """
+        Deletes a supply record.
+        Returns True if deleted, False otherwise.
+        """
+
+        if not supply_record.id:
+            logging.error("Cannot delete supply record without inventory item id and ship id.")
+            return False
+
+        if not supply_record.inventory_item_id or not supply_record.ship_id:
+            logging.error("Cannot edit supply record without inventory item id and ship id.")
+            return None
+
+        with self.Session() as session:
+
+            try:
+                the_supply_record = session.get(SupplyRecord, supply_record.id)
+                if the_supply_record:
+                    session.delete(the_supply_record)
+                    session.commit()
+                    logging.info(f"Deleted supply record with id: {supply_record.id}")
+                    return True
+                else:
+                    logging.warning(f"supply record with id {supply_record.id} not found for deletion.")
+                    return False
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to delete supply record {supply_record.id}: {e}")
                 return False
 
 

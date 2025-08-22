@@ -133,8 +133,8 @@ class Order(Base):
 
     supplier = relationship("Supplier", back_populates="orders")
     ship = relationship("Ship", back_populates="order")
-    supply_record = relationship("SupplyRecord", back_populates="order")
 
+#done
 class Ship(Base):
     __tablename__ = 'ship'
 
@@ -149,22 +149,27 @@ class Ship(Base):
 
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-
+    supply_record = relationship("SupplyRecord", back_populates="ship")
     order = relationship("Order", back_populates="ship")
-
+#done
 class SupplyRecord(Base):
     __tablename__ = "supply_record"
 
-    inventory_item_id = Column(ForeignKey('inventory.id'), primary_key=True)
-    order_id = Column(ForeignKey('order.id'), primary_key=True)
+    id = Column(Integer, primary_key=True)
+    inventory_item_id = Column(ForeignKey('inventory.id'), nullable=False)
+    ship_id = Column(ForeignKey('ship.id'), nullable=False)
+    price = Column(Float)
     box_amount = Column(Float)
     box_price = Column(Float)
     box_discount = Column(Float)
     num_of_box = Column(Float)
     description = Column(String(500))
 
+    time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
     inventory_item = relationship("Inventory", back_populates="supply_record")
-    order = relationship("Order", back_populates="supply_record")
+    ship = relationship("Ship", back_populates="supply_record")
 #_______________THIS TABLES CAN DEDUCT ITEM FROM MY INVENTORY__________________________
 
 class Invoice(Base):
