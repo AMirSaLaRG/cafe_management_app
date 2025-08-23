@@ -247,6 +247,9 @@ class InventoryUsage(Base):
     usage_id = Column(ForeignKey("usage.id"), primary_key=True)
     amount = Column(Float)
 
+    time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
     inventory_item = relationship("Inventory", back_populates="usage_records")
     usage = relationship("Usage", back_populates="inventory_usage")
 
