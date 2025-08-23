@@ -1970,4 +1970,168 @@ class DbHandler:
 
 
 
+    #--Usage--
+
+    def add_usage(self,
+                    used_by: Optional[str] = None,
+                    date: Optional[datetime] = None,
+                    category: Optional[str] = None,
+                    description: Optional[str] = None,
+                    ) -> Optional[Usage]:
+
+        """ adding new usage  """
+        #todo if used_by should be if used_by is not None
+        if used_by is not None:
+            used_by = used_by.lower().strip()
+
+        if category is not None:
+            category = category.lower().strip()
+
+        if date is None:
+            date = datetime.now()
+
+
+
+        with self.Session() as session:
+            try:
+
+                new_usage = Usage(
+                    used_by=used_by,
+                    date=date,
+                    category=category,
+                    description=description,
+                )
+                session.add(new_usage)
+                session.commit()
+                session.refresh(new_usage)
+                logging.info("usage added successfully")
+                return new_usage
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to add usage to the database: {e}")
+                return None
+
+    def get_usage(
+            self,
+            id: Optional[int] = None,
+            used_by: Optional[str] = None,
+            category: Optional[str] = None,
+            from_date: Optional[datetime] = None,
+            to_date: Optional[datetime] = None,
+            row_num: Optional[int] = None,
+
+    ) -> list[Usage]:
+        """Get usage with optional filters
+
+
+
+        Returns:
+            List of matching usages (empty list if no matches or no filters provided)
+        """
+        if used_by is not None:
+            used_by = used_by.lower().strip()
+
+        if category is not None:
+            category = category.lower().strip()
+        with self.Session() as session:
+                try:
+                    query = session.query(Usage).order_by(Usage.date.desc())
+                    if id:
+                        query = query.filter_by(id=id)
+
+                    if used_by:
+                        query = query.filter_by(used_by=used_by)
+
+                    if category:
+                        query = query.filter_by(category=category)
+
+                    if from_date:
+                        query = query.filter(Usage.date >= from_date)
+
+                    if to_date:
+                        query = query.filter(Usage.date <= to_date)
+
+                    if row_num:
+                        query = query.limit(row_num)
+
+                    result = query.all()
+                    logging.info(f"Found {len(result)} usage(s)")
+
+                    return cast(List[Usage], result)
+
+                except Exception as e:
+                    session.rollback()
+                    logging.error(f"Error fetching usage: {str(e)}")
+                    return []
+
+
+    def edit_usage(self, usage:Usage) -> Optional[Usage]:
+        """
+        Updates an existing usage in the database.
+
+        Args:
+            usage: The Usage object with updated values.
+                         Must have valid id.
+
+        Returns:
+            The updated Usage if successful, None on error.
+        """
+        fields_to_process = ['used_by', "category"]
+        for field in fields_to_process:
+            value = getattr(usage, field, None)
+            if isinstance(value, str):
+                setattr(usage, field, value.strip().lower())
+
+
+
+        if not usage.id:
+            logging.info("No valid id")
+            return None
+
+        with self.Session() as session:
+            try:
+                existing = session.get(Usage, usage.id)
+                if not existing:
+                    logging.info(f"No usage found with IDs: {usage.id} ")
+                    return None
+                merged_usage  = session.merge(usage)
+                session.commit()
+                session.refresh(merged_usage )
+                logging.info(f"Successfully updated usage with ids: {usage.id}")
+                return merged_usage
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to update usage with ids: {usage.id}: {e}")
+                return None
+
+    def delete_usage(self, usage:Usage) -> bool:
+        """
+        Deletes a usage.
+        Returns True if deleted, False otherwise.
+        """
+
+        if not usage.id:
+            logging.error("Cannot delete usage record without ID.")
+            return False
+
+        with self.Session() as session:
+
+            try:
+                the_usage = session.get(Usage, usage.id)
+                if the_usage:
+                    session.delete(the_usage)
+                    session.commit()
+                    logging.info(f"Deleted usage with ids: {usage.id}")
+                    return True
+                else:
+                    logging.warning(f"usage with ids {usage.id} not found for deletion.")
+                    return False
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to delete usage {usage.id}: {e}")
+                return False
+
+
+
+
 db = DbHandler()

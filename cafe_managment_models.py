@@ -206,6 +206,7 @@ class Invoice(Base):
     sales = relationship("Sales", back_populates="invoice")
     payment = relationship("InvoicePayment", back_populates="invoice")
 
+#done
 class Sales(Base):
     __tablename__ = 'sales'
 
@@ -223,14 +224,18 @@ class Sales(Base):
     menu_item = relationship("Menu", back_populates="sales")
     invoice = relationship("Invoice", back_populates="sales")
 
+#done
 class Usage(Base):
     __tablename__ = 'usage'
 
     id = Column(Integer, primary_key=True)
     used_by = Column(String)
     date = Column(DateTime)
-    category_of_use = Column(String)
+    category = Column(String)
     description = Column(String(500))
+
+    time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
 
     inventory_usage = relationship("InventoryUsage", back_populates="usage")
     menu_usage = relationship("MenuUsage", back_populates="usage")
