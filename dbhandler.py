@@ -2282,4 +2282,152 @@ class DbHandler:
 
 
 
+    #--MenuUsage--
+
+    def add_menuusage(self,
+                    menu_id:int ,
+                    usage_id:int ,
+                    amount: Optional[int] = None,
+
+                    ) -> Optional[MenuUsage]:
+
+        """ adding new MenuUsage  """
+        if amount is not None and amount <= 0:
+            logging.error("Total amount must be greater than 0.")
+            return None
+
+
+
+        with self.Session() as session:
+            try:
+
+                new_menu_usage = MenuUsage(
+                    menu_id=menu_id,
+                    usage_id=usage_id,
+                    amount=amount,
+                )
+                session.add(new_menu_usage)
+                session.commit()
+                session.refresh(new_menu_usage)
+                logging.info("menu usage added successfully")
+                return new_menu_usage
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to add menu usage to the database: {e}")
+                return None
+
+    def get_menuusage(
+            self,
+            menu_id: Optional[int] = None,
+            usage_id: Optional[int] = None,
+            row_num: Optional[int] = None,
+    ) -> list[MenuUsage]:
+        """Get menu_usage with optional filters
+
+
+
+        Returns:
+            List of matching MenuUsage (empty list if no matches or no filters provided)
+        """
+
+        with self.Session() as session:
+                try:
+                    query = session.query(MenuUsage).order_by(MenuUsage.time_create.desc())
+
+                    if menu_id:
+                        query = query.filter_by(menu_id=menu_id)
+
+                    if usage_id:
+                        query = query.filter_by(usage_id=usage_id)
+
+                    if row_num:
+                        query = query.limit(row_num)
+
+                    result = query.all()
+                    logging.info(f"Found {len(result)} menu usage(s)")
+
+                    return cast(List[MenuUsage], result)
+
+                except Exception as e:
+                    session.rollback()
+                    logging.error(f"Error fetching menu usage: {str(e)}")
+                    return []
+
+
+    def edit_menuusage(self, menu_usage:MenuUsage) -> Optional[MenuUsage]:
+        """
+        Updates an existing menu_usage in the database.
+
+        Args:
+            menu_usage: The MenuUsage object with updated values.
+                         Must have valid menu_id and usage_id.
+
+        Returns:
+            The updated MenuUsage if successful, None on error.
+        """
+
+        # fields_to_process = ['used_by', "category"]
+        # for field in fields_to_process:
+        #     value = getattr(usage, field, None)
+        #     if isinstance(value, str):
+        #         setattr(usage, field, value.strip().lower())
+
+        if not menu_usage.menu_id or not menu_usage.usage_id:
+            logging.error("Cannot update menu usage record without menu_id and usage_id.")
+            return None
+
+        with self.Session() as session:
+            try:
+
+                menu_exists = session.get(Menu, menu_usage.menu_id)
+                if not menu_exists:
+                    logging.info(f"No menu item found with IDs: {menu_usage.menu_id} ")
+                    return None
+
+                usage_exists = session.get(Usage, menu_usage.usage_id)
+                if not usage_exists:
+                    logging.info(f"No usage record found with IDs: {menu_usage.usage_id} ")
+                    return None
+
+                merged_menu_usage  = session.merge(menu_usage)
+                session.commit()
+                session.refresh(merged_menu_usage )
+                logging.info(f"Successfully updated menu usage")
+                return merged_menu_usage
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to update menu usage : {e}")
+                return None
+
+    def delete_menuusage(self, menu_usage:MenuUsage) -> bool:
+        """
+        Deletes a MenuUsage.
+        Returns True if deleted, False otherwise.
+        """
+
+        if not menu_usage.menu_id or not menu_usage.usage_id:
+            logging.error("Cannot delete menu usage record without ID.")
+            return False
+
+        key = (menu_usage.menu_id, menu_usage.usage_id)
+        with self.Session() as session:
+
+            try:
+                the_menu_usage = session.get(MenuUsage, key)
+                if the_menu_usage:
+                    session.delete(the_menu_usage)
+                    session.commit()
+                    logging.info(f"Deleted menu usage with ids: {key}")
+                    return True
+                else:
+                    logging.warning(f"menu usage with ids {key} not found for deletion.")
+                    return False
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to delete menu usage {key}: {e}")
+                return False
+
+
+
+
 db = DbHandler()

@@ -239,7 +239,7 @@ class Usage(Base):
 
     inventory_usage = relationship("InventoryUsage", back_populates="usage")
     menu_usage = relationship("MenuUsage", back_populates="usage")
-
+#done
 class InventoryUsage(Base):
     __tablename__ = "inventory_usage"
 
@@ -259,6 +259,9 @@ class MenuUsage(Base):
     menu_id = Column(ForeignKey("menu.id"), primary_key=True)
     usage_id = Column(ForeignKey("usage.id"), primary_key=True)
     amount = Column(Float)
+
+    time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
 
     menu_item= relationship("Menu", back_populates="usage_record")
     usage = relationship("Usage", back_populates="menu_usage")
