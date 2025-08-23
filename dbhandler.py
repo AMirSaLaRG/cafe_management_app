@@ -1807,6 +1807,167 @@ class DbHandler:
                 return False
 
 
+    #--sales--
+
+    def add_sales(self,
+                    menu_id: Optional[int] = None,
+                    invoice_id: Optional[int] = None,
+                    number: Optional[int] = None,
+                    discount: Optional[float] = None,
+                    price: Optional[float] = None,
+                    description: Optional[str] = None,
+                    ) -> Optional[Sales]:
+
+        """ adding new sales  """
+        if number is not None and number <= 0:
+            logging.error("Total number must be greater than 0.")
+            return None
+        if price is not None and price <= 0:
+            logging.error("Total price must be greater than 0.")
+            return None
+        if discount is not None and discount < 0:
+            logging.error("Discount cannot be negative.")
+            return None
+
+
+        with self.Session() as session:
+            try:
+                if menu_id:
+                    check = session.get(Menu, menu_id)
+                    if not check:
+                        logging.info(f"No menu item found with menu id: {menu_id}")
+                        return None
+                if invoice_id:
+                    check = session.get(Invoice, invoice_id)
+                    if not check:
+                        logging.info(f"No invoice found with invoice id: {invoice_id}")
+                        return None
+
+                new_sales = Sales(
+                    menu_id=menu_id,
+                    invoice_id=invoice_id,
+                    number=number,
+                    discount=discount,
+                    price=price,
+                    description=description,
+
+                )
+                session.add(new_sales)
+                session.commit()
+                session.refresh(new_sales)
+                logging.info("sales added successfully")
+                return new_sales
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to add sales to the database: {e}")
+                return None
+
+    def get_sales(
+            self,
+            menu_id: Optional[int] = None,
+            invoice_id: Optional[int] = None,
+            row_num: Optional[int] = None,
+
+    ) -> list[Sales]:
+        """Get sales with optional filters
+
+
+
+        Returns:
+            List of matching Sales (empty list if no matches or no filters provided)
+        """
+        with self.Session() as session:
+                try:
+                    query = session.query(Sales).order_by(Sales.time_create.desc())
+                    if menu_id:
+                        query = query.filter_by(menu_id=menu_id)
+                    if invoice_id:
+                        query = query.filter_by(invoice_id=invoice_id)
+
+                    if row_num:
+                        query = query.limit(row_num)
+
+                    result = query.all()
+                    logging.info(f"Found {len(result)} sales")
+
+                    return cast(List[Sales], result)
+
+                except Exception as e:
+                    session.rollback()
+                    logging.error(f"Error fetching sales: {str(e)}")
+                    return []
+
+
+    def edit_sales(self, sales:Sales) -> Optional[Sales]:
+        """
+        Updates an existing sale in the database.
+
+        Args:
+            sales: The Sales object with updated values.
+                         Must have valid id.
+
+        Returns:
+            The updated Sales if successful, None on error.
+        """
+        # fields_to_process = ['saler']
+        # for field in fields_to_process:
+        #     value = getattr(invoice, field, None)
+        #     if isinstance(value, str):
+        #         setattr(invoice, field, value.strip().lower())
+
+
+
+        if not sales.menu_id or not sales.invoice_id:
+            logging.info("No valid ids")
+            return None
+
+        key = (sales.menu_id, sales.invoice_id)
+
+        with self.Session() as session:
+            try:
+                existing = session.get(Sales, key)
+                if not existing:
+                    logging.info(f"No sales found with IDs: {key} ")
+                    return None
+                merged_sales  = session.merge(sales)
+                session.commit()
+                session.refresh(merged_sales )
+                logging.info(f"Successfully updated sales with ids: {key}")
+                return merged_sales
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to update sales with ids: {key}: {e}")
+                return None
+
+    def delete_sales(self, sales:Sales) -> bool:
+        """
+        Deletes a sales.
+        Returns True if deleted, False otherwise.
+        """
+
+        if not sales.menu_id or not sales.invoice_id:
+            logging.error("Cannot delete sales record without  menu_id and invoice_id.")
+            return False
+        key = (sales.menu_id, sales.invoice_id)
+
+        with self.Session() as session:
+
+            try:
+                the_sales = session.get(Sales, key)
+                if the_sales:
+                    session.delete(the_sales)
+                    session.commit()
+                    logging.info(f"Deleted sales with ids: {key}")
+                    return True
+                else:
+                    logging.warning(f"sales with ids {key} not found for deletion.")
+                    return False
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to delete sales {key}: {e}")
+                return False
+
+
 
 
 db = DbHandler()
