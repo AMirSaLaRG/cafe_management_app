@@ -42,7 +42,7 @@ def test_supplier_case_insensitive_lookup(in_memory_db):
     ]
 
     for test_name in test_cases:
-        found = in_memory_db.get_supplier(test_name)
+        found = in_memory_db.get_supplier(name = test_name)
         assert found != []
         assert found[0].name == "awesome supplier llc"  # Stored lowercase
         assert found[0].id == supplier.id
@@ -117,7 +117,7 @@ def test_supplier_get_all_functionality(in_memory_db):
 
     # Verify we can retrieve each one
     for i, expected_supplier in enumerate(suppliers):
-        found = in_memory_db.get_supplier(f"supplier {i}")
+        found = in_memory_db.get_supplier(name =f"supplier {i}")
         assert found != []
         assert found[0].id == expected_supplier.id
         assert found[0].name == f"supplier {i}"  # Lowercase
@@ -127,14 +127,13 @@ def test_supplier_null_values(in_memory_db):
     """Test supplier with None values"""
     supplier = in_memory_db.add_supplier(
         name="Null Supplier",
-        contact_channel=None,
-        contact_address=None
+
     )
     assert supplier is not None
     assert supplier.contact_channel is None
     assert supplier.contact_address is None
 
-    found = in_memory_db.get_supplier("Null Supplier")
+    found = in_memory_db.get_supplier(name = "Null Supplier")
     assert found != []
     assert found[0].contact_channel is None
     assert found[0].contact_address is None

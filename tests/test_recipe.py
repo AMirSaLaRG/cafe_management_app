@@ -49,7 +49,7 @@ def test_add_recipe(in_memory_db, setup_recipe_dependencies):
         "menu_id": menu_id,
         "inventory_item_amount_usage": 15.0,
         "writer": "John Doe",
-        "recipe_note": "Standard recipe"
+        "description": "Standard recipe"
     }
     new_recipe = in_memory_db.add_recipe(**recipe_data)
 
@@ -129,7 +129,7 @@ def test_edit_recipe(in_memory_db, setup_recipe_dependencies):
 
     # Modify the object
     recipe_to_edit.inventory_item_amount_usage = 25.0
-    recipe_to_edit.recipe_note = "Updated note"
+    recipe_to_edit.description = "Updated note"
 
     # Edit the recipe in the database
     edited_recipe = in_memory_db.edit_recipe(recipe_to_edit)
@@ -137,7 +137,7 @@ def test_edit_recipe(in_memory_db, setup_recipe_dependencies):
     # Assert that the changes were saved
     assert edited_recipe is not None
     assert edited_recipe.inventory_item_amount_usage == 25.0
-    assert edited_recipe.recipe_note == "Updated note"
+    assert edited_recipe.description == "Updated note"
 
 
 def test_delete_recipe(in_memory_db, setup_recipe_dependencies):
@@ -188,7 +188,7 @@ def test_crud_cycle_recipe(in_memory_db, setup_recipe_dependencies):
     }
     update_kwargs = {
         "inventory_item_amount_usage": 15.0,
-        "recipe_note": "Test note"
+        "description": "Test note"
     }
     # For a composite key, we need to pass the lookup values manually
     lookup_fields = ["inventory_id", "menu_id"]

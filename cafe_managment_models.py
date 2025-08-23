@@ -100,7 +100,7 @@ class Recipe(Base):
     menu_id = Column(ForeignKey("menu.id"), primary_key=True)
     inventory_item_amount_usage = Column(Float)
     writer = Column(String(100))
-    recipe_note = Column(String(500))
+    description = Column(String(500))
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     menu_item = relationship("Menu", back_populates='recipe')
@@ -172,16 +172,33 @@ class SupplyRecord(Base):
     ship = relationship("Ship", back_populates="supply_record")
 #_______________THIS TABLES CAN DEDUCT ITEM FROM MY INVENTORY__________________________
 
+
+class InvoicePayment(Base):
+    __tablename__ = 'invoice_payment'
+
+    id = Column(Integer, primary_key=True)
+    payed = Column(Float)
+    payer = Column(String)
+    method = Column(String)
+    date = Column(DateTime)
+    receiver = Column(String)
+    receiver_id = Column(String)
+
+    invoice = relationship("Invoice", back_populates="payment")
+
 class Invoice(Base):
     __tablename__ = 'invoice'
 
     id = Column(Integer, primary_key=True)
+    pay_id = Column(ForeignKey('invoice_payment.id'))
     saler = Column(String)
     date = Column(DateTime)
-    payment_method = Column(String)
+    total_price = Column(Float)
+    closed = Column(Boolean, nullable=False)
     description = Column(String(500))
 
     sales = relationship("Sales", back_populates="invoice")
+    payment = relationship("InvoicePayment", back_populates="invoice")
 
 class Sales(Base):
     __tablename__ = 'sales'

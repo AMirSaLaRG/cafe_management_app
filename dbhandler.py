@@ -40,6 +40,8 @@ class DbHandler:
             name = name.lower().strip()
         if category:
             category = category.lower().strip()
+        if unit:
+            unit = unit.lower().strip()
         with self.Session() as session:
             try:
                 # The timestamp column in your model is "date_of_initial_value".
@@ -64,11 +66,13 @@ class DbHandler:
                 return None
 
     def get_inventory(self,
+                      id: Optional[int]=None,
                       name:Optional[str]=None,
                       row_num:Optional[int]=None) -> list[Inventory]:
         """Find inventory item(s) with optional filters
 
         Args:
+            id: id of item to find
             name: Inventory item name (case-insensitive)
             row_num: Maximum number of records to return
 
@@ -79,6 +83,8 @@ class DbHandler:
         with self.Session() as session:
             try:
                 query = session.query(Inventory).order_by(Inventory.time_create.desc())
+                if id:
+                    query = query.filter_by(id=id)
                 if name:
                     lookup_name = name.strip().lower()
                     query = query.filter_by(name=lookup_name)
@@ -109,6 +115,11 @@ class DbHandler:
             The updated Inventory object after it has been committed, or None
             if an error occurred.
         """
+        fields_to_process = ['name', "category", "unit"]
+        for field in fields_to_process:
+            value = getattr(inventory, field, None)
+            if isinstance(value, str):
+                setattr(inventory, field, value.strip().lower())
 
         if not inventory.id:
             logging.error("Cannot edit inventory item without a valid ID.")
@@ -161,6 +172,10 @@ class DbHandler:
                  description:Optional[str]=None,
                  ) -> Optional[Menu]:
         """ adding new menu item name + size must be unique"""
+        if not name:
+            logging.error("Menu item name is required")
+            return None
+
         if current_price is not None and current_price < 0:
             logging.error("Price cannot be negative")
             return None
@@ -207,12 +222,15 @@ class DbHandler:
                 logging.error(f"Failed to add menu item to the database: {e}")
                 return None
 
-    def get_menu(self, name:Optional[str]=None,
+    def get_menu(self,
+                 id:Optional[int]=None,
+                 name:Optional[str]=None,
                  size:Optional[str]=None,
                  row_num:Optional[int]=None) -> list[Menu]:
         """Get menu items with optional filters
 
         Args:
+            id: get the item by its id
             name: Menu item name (case-insensitive)
             size: If provided, searches for exact name+size match
             row_num: Maximum number of records to return
@@ -224,7 +242,8 @@ class DbHandler:
         with (self.Session() as session):
             try:
                 query = session.query(Menu).order_by(Menu.time_create.desc())
-
+                if id:
+                    query = query.filter_by(id=id)
                 if name:
                     lookup_name = name.strip().lower()
                     query = query.filter_by(name=lookup_name)
@@ -260,6 +279,12 @@ class DbHandler:
             The updated menu object after it has been committed, or None
             if an error occurred.
         """
+
+        fields_to_process = ['name', "size", "category"]
+        for field in fields_to_process:
+            value = getattr(menu, field, None)
+            if isinstance(value, str):
+                setattr(menu, field, value.strip().lower())
 
         if not menu.id:
             logging.error("Cannot edit menu item without a valid ID.")
@@ -360,6 +385,7 @@ class DbHandler:
 
     def get_inventoryrecord(
             self,
+            id:Optional[int]=None,
             inventory_id: Optional[int]=None,
             from_date: Optional[datetime] = None,
             to_date: Optional[datetime] = None,
@@ -368,6 +394,7 @@ class DbHandler:
         """Get inventory record(s) for inventory items
 
         Args:
+            id: inventory record id
             inventory_id: Inventory ID to filter by (None for all inventories)
             from_date: Optional start date for filtering records
             to_date: Optional end date for filtering records
@@ -381,6 +408,8 @@ class DbHandler:
             try:
                 query = session.query(InventoryRecord).order_by(InventoryRecord.date.desc())
 
+                if id:
+                    query = query.filter_by(id=id)
                 if inventory_id:
                     query = query.filter_by(inventory_id=inventory_id)
                 if from_date:
@@ -410,6 +439,7 @@ class DbHandler:
         Returns:
             The updated InventoryRecord if successful, None on error.
         """
+
 
         if not inventory_record.id:
             logging.error("Cannot edit inventory record without a valid ID.")
@@ -523,6 +553,7 @@ class DbHandler:
 
     def get_estimatedmenupricerecord(
             self,
+            id: Optional[int]=None,
             menu_id: Optional[int] = None,
             from_date: Optional[datetime] = None,
             to_date: Optional[datetime] = None,
@@ -531,6 +562,7 @@ class DbHandler:
         """Get price estimation records for menu items
 
         Args:
+            id: get estimated menu price record by its id
             menu_id: menu item ID to filter by (None for all menus)
             from_date: Optional start date for filtering records
             to_date: Optional end date for filtering records
@@ -542,7 +574,10 @@ class DbHandler:
 
         with (self.Session() as session):
             try:
+
                 query = session.query(EstimatedMenuPriceRecord).order_by(EstimatedMenuPriceRecord.from_date.desc())
+                if id:
+                    query = query.filter_by(id=id)
                 if menu_id:
                     query = query.filter_by(menu_id=menu_id)
                 if from_date:
@@ -573,6 +608,7 @@ class DbHandler:
         Returns:
             The updated EstimatedMenuPriceRecord if successful, None on error.
         """
+
 
         if not price_estimation_record.id:
             logging.error("Cannot edit inventory record without a valid ID.")
@@ -622,14 +658,15 @@ class DbHandler:
                  menu_id:int,
                  inventory_item_amount_usage:Optional[float]=None,
                  writer:Optional[str]=None,
-                 recipe_note:Optional[str]=None,
+                 description:Optional[str]=None,
                  ) -> Optional[Recipe]:
         """ adding new recipe  """
 
         if inventory_item_amount_usage is not None and inventory_item_amount_usage < 0:
             logging.error("inventory_item_amount_usage: value cant be negative")
             return None
-
+        if writer:
+            writer = writer.lower().strip()
         with self.Session() as session:
             try:
                 if not session.get(Menu, menu_id):
@@ -646,7 +683,7 @@ class DbHandler:
                     menu_id=menu_id,
                     inventory_item_amount_usage=inventory_item_amount_usage,
                     writer=writer,
-                    recipe_note=recipe_note,
+                    description=description,
                 )
                 session.add(new_record)
                 session.commit()
@@ -710,6 +747,13 @@ class DbHandler:
             The updated Recipe if successful, None on error.
         """
 
+        fields_to_process = ['writer']
+        for field in fields_to_process:
+            value = getattr(recipe, field, None)
+            if isinstance(value, str):
+                setattr(recipe, field, value.strip().lower())
+
+
         if not recipe.inventory_id or not recipe.menu_id:
             logging.error("Cannot edit recipe without a valid ID (inventory, menu).")
             return None
@@ -767,6 +811,9 @@ class DbHandler:
         if name:
             name = name.strip().lower()
 
+        if contact_channel:
+            contact_channel = contact_channel.strip().lower()
+
         with self.Session() as session:
             try:
                 supplier = Supplier(
@@ -786,6 +833,7 @@ class DbHandler:
 
     def get_supplier(
             self,
+            id: Optional[int] = None,
             name:Optional[str] = None,
             row_num: Optional[int]=None,
     ) -> list[Supplier]:
@@ -798,6 +846,8 @@ class DbHandler:
         with self.Session() as session:
                 try:
                     query = session.query(Supplier).order_by(Supplier.time_create.desc())
+                    if id:
+                        query = query.filter_by(id=id)
                     if name:
                         lookup_name = name.lower().strip()
                         query = query.filter_by(name = lookup_name)
@@ -823,6 +873,11 @@ class DbHandler:
         Returns:
             The updated supplier if successful, None on error.
         """
+        fields_to_process = ['name', "contact_channel" ]
+        for field in fields_to_process:
+            value = getattr(supplier, field, None)
+            if isinstance(value, str):
+                setattr(supplier, field, value.strip().lower())
         if not supplier.id:
             logging.error("Cannot edit supplier without a valid ID.")
             return None
@@ -911,6 +966,7 @@ class DbHandler:
 
     def get_order(
             self,
+            id: Optional[int] = None,
             buyer: Optional[str] = None,
             payer: Optional[str]=None,
             supplier:Optional[str]=None,
@@ -922,6 +978,7 @@ class DbHandler:
         """Get orders with optional filters
 
         Args:
+            id: Filter by id
             buyer: Filter by buyer name (case-insensitive)
             payer: Filter by payer name (case-insensitive)
             supplier: Filter by supplier name
@@ -938,6 +995,8 @@ class DbHandler:
                 try:
                     query = session.query(Order).order_by(Order.date.desc())
 
+                    if id:
+                        query = query.filter_by(id=id)
                     if buyer:
                         lookup_buyer = buyer.lower().strip()
                         query = query.filter_by(buyer=lookup_buyer)
@@ -983,6 +1042,12 @@ class DbHandler:
         Returns:
             The updated supplier if successful, None on error.
         """
+
+        fields_to_process = ['buyer', "payer"]
+        for field in fields_to_process:
+            value = getattr(order, field, None)
+            if isinstance(value, str):
+                setattr(order, field, value.strip().lower())
         if not order.id:
             logging.error("Cannot edit order without a valid ID.")
             return None
@@ -1076,6 +1141,7 @@ class DbHandler:
 
     def get_ship(
             self,
+            id:Optional[int]=None,
             order_id: Optional[int] = None,
             shipper: Optional[str]=None,
             receiver:Optional[str]=None,
@@ -1088,6 +1154,7 @@ class DbHandler:
         """Get ship with optional filters
 
         Args:
+            id: get by id
             order_id: filter by order id
             shipper: Filter by shipper name (case-insensitive)
             payer: Filter by payer name (case-insensitive)
@@ -1103,6 +1170,9 @@ class DbHandler:
         with self.Session() as session:
                 try:
                     query = session.query(Ship).order_by(Ship.date.desc())
+
+                    if id:
+                        query= query.filter_by(id = id)
 
                     if order_id:
                         check = session.get(Order, order_id)
@@ -1151,6 +1221,11 @@ class DbHandler:
         Returns:
             The updated ship if successful, None on error.
         """
+        fields_to_process = ['shipper', "receiver", "payer"]
+        for field in fields_to_process:
+            value = getattr(ship, field, None)
+            if isinstance(value, str):
+                setattr(ship, field, value.strip().lower())
         if not ship.id:
             logging.error("Cannot edit ship without a valid ID.")
             return None
@@ -1265,6 +1340,7 @@ class DbHandler:
 
     def get_supplyrecord(
             self,
+            id:Optional[int] = None,
             inventory_item_id: Optional[int] = None,
             ship_id: Optional[int] = None,
             row_num: Optional[int]=None,
@@ -1273,6 +1349,7 @@ class DbHandler:
         """Get supply record with optional filters
 
         Args:
+            id: filter by record id
             inventory_item_id: filter by inventory id
             ship_id: filter by ship id
             row_num: number of data you want to get if not give back all
@@ -1284,6 +1361,8 @@ class DbHandler:
                 try:
                     query = session.query(SupplyRecord).order_by(SupplyRecord.time_create.desc())
 
+                    if id:
+                        query = query.filter_by(id=id)
                     if inventory_item_id:
                         check = session.get(Inventory, inventory_item_id)
                         if not check:
@@ -1318,11 +1397,14 @@ class DbHandler:
 
         Args:
             supply_record: The SupplyRecord object with updated values.
-                         Must have valid composite key (inventory_item_id, ship_id).
+                         Must have valid id.
 
         Returns:
             The updated SupplyRecord if successful, None on error.
         """
+
+
+
         if not supply_record.id:
             logging.info("No supply record id")
             return None
@@ -1352,12 +1434,12 @@ class DbHandler:
         """
 
         if not supply_record.id:
-            logging.error("Cannot delete supply record without inventory item id and ship id.")
+            logging.error("Cannot delete supply record without id.")
             return False
 
         if not supply_record.inventory_item_id or not supply_record.ship_id:
-            logging.error("Cannot edit supply record without inventory item id and ship id.")
-            return None
+            logging.error("Cannot edit supply record without id.")
+            return False
 
         with self.Session() as session:
 
@@ -1379,5 +1461,352 @@ class DbHandler:
 
 
 
+    #--InvoicePayment--
+
+    def add_invoicepayment(self,
+                    payed: Optional[float] = None,
+                    payer: Optional[str] = None,
+                    method: Optional[str] = None,
+                    date: Optional[datetime] = None,
+                    receiver: Optional[str] = None,
+                    receiver_id: Optional[str] = None,
+                    ) -> Optional[InvoicePayment]:
+
+        """ adding new invoice  payment"""
+        if payed is not None and payed <= 0:
+            logging.error("Total payed must be greater than 0.")
+            return None
+
+        if payer:
+            payer = payer.lower().strip()
+        if method:
+            method = method.lower().strip()
+        if receiver:
+            receiver = receiver.lower().strip()
+
+
+
+        if not date:
+            date = datetime.now()
+
+        with self.Session() as session:
+            try:
+
+
+                new_invoice_payment = InvoicePayment(
+                    payed=payed,
+                    payer=payer,
+                    method=method,
+                    date=date,
+                    receiver=receiver,
+                    receiver_id=receiver_id,
+
+                )
+                session.add(new_invoice_payment)
+                session.commit()
+                session.refresh(new_invoice_payment)
+                logging.info("invoice payment added successfully")
+                return new_invoice_payment
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to add invoice payment to the database: {e}")
+                return None
+
+    def get_invoicepayment(
+            self,
+            id: Optional[int] = None,
+            payer: Optional[str] = None,
+            method: Optional[str] = None,
+            receiver: Optional[str] = None,
+            receiver_id: Optional[str] = None,
+            from_date: Optional[datetime] = None,
+            to_date: Optional[datetime] = None,
+            row_num: Optional[int] = None,
+
+    ) -> list[InvoicePayment]:
+        """Get invoice payment with optional filters
+
+
+
+        Returns:
+            List of matching InvoicePayment (empty list if no matches or no filters provided)
+        """
+        with self.Session() as session:
+                try:
+                    query = session.query(InvoicePayment).order_by(InvoicePayment.date.desc())
+                    if id:
+                        query = query.filter_by(id=id)
+
+                    if payer:
+                        payer = payer.lower().strip()
+                        query = query.filter_by(payer=payer)
+
+                    if method:
+                        method = method.lower().strip()
+                        query = query.filter_by(method=method)
+
+                    if receiver:
+                        receiver = receiver.lower().strip()
+                        query = query.filter_by(receiver=receiver)
+
+                    if receiver_id:
+                        query = query.filter_by(receiver_id=receiver_id)
+
+                    if from_date:
+                        query = query.filter(InvoicePayment.date >= from_date)
+                        
+                    if to_date:
+                        query = query.filter(InvoicePayment.date <= to_date)
+
+                    if row_num:
+                        query = query.limit(row_num)
+
+                    result = query.all()
+                    logging.info(f"Found {len(result)} invoice payment")
+
+                    return cast(List[InvoicePayment], result)
+
+                except Exception as e:
+                    session.rollback()
+                    logging.error(f"Error fetching invoice payment(s): {str(e)}")
+                    return []
+
+
+    def edit_invoicepayment(self, invoice_payment:InvoicePayment) -> Optional[InvoicePayment]:
+        """
+        Updates an existing invoice payment in the database.
+
+        Args:
+            invoice_payment: The InvoicePayment object with updated values.
+                         Must have valid id.
+
+        Returns:
+            The updated InvoicePayment if successful, None on error.
+        """
+        fields_to_process = ['payer', "method", "receiver"]
+        for field in fields_to_process:
+            value = getattr(invoice_payment, field, None)
+            if isinstance(value, str):
+                setattr(invoice_payment, field, value.strip().lower())
+        if not invoice_payment.id:
+            logging.info("No invoice payment id")
+            return None
+
+        with self.Session() as session:
+            try:
+                existing = session.get(InvoicePayment, invoice_payment.id)
+                if not existing:
+                    logging.info(f"No invoice payment found with ID: {invoice_payment.id} ")
+                    return None
+                merged_invoice_payment  = session.merge(invoice_payment)
+                session.commit()
+                session.refresh(merged_invoice_payment )
+                logging.info(f"Successfully updated invoice payment with ids: {invoice_payment.id}")
+                return merged_invoice_payment
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to update invoice payment with ids: {invoice_payment.id}: {e}")
+                return None
+
+    def delete_invoicepayment(self, invoice_payment:InvoicePayment) -> bool:
+        """
+        Deletes an invoice payment in the database.
+        Returns True if deleted, False otherwise.
+        """
+
+        if not invoice_payment.id:
+            logging.error("Cannot delete invoice payment without invoice id.")
+            return False
+
+        with self.Session() as session:
+
+            try:
+                the_invoice_payment = session.get(InvoicePayment, invoice_payment.id)
+                if the_invoice_payment:
+                    session.delete(the_invoice_payment)
+                    session.commit()
+                    logging.info(f"Deleted invoice payment with id: {invoice_payment.id}")
+                    return True
+                else:
+                    logging.warning(f"invoice payment with id {invoice_payment.id} not found for deletion.")
+                    return False
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to delete invoice payment {invoice_payment.id}: {e}")
+                return False
+
+
+    #--Invoice--
+
+    def add_invoice(self,
+                    pay_id: Optional[int] = None,
+                    saler: Optional[str] = None,
+                    date: Optional[datetime] = None,
+                    total_price: Optional[float] = None,
+                    closed: bool = False,
+                    description: Optional[str] = None,
+                    ) -> Optional[Invoice]:
+
+        """ adding new invoice  """
+        if total_price is not None and total_price <= 0:
+            logging.error("Total price must be greater than 0.")
+            return None
+
+        if saler:
+            saler = saler.lower().strip()
+
+        #todo this look problematic just wrote it here to check others
+        if not date:
+            date = datetime.now()
+
+        with self.Session() as session:
+            try:
+                if pay_id:
+                    check = session.get(InvoicePayment, pay_id)
+                    if not check:
+                        logging.info(f"No payment found with pay id: {pay_id}")
+                        return None
+
+                new_invoice = Invoice(
+                    pay_id=pay_id,
+                    saler=saler,
+                    date=date,
+                    total_price=total_price,
+                    closed=closed,
+                    description=description,
+
+                )
+                session.add(new_invoice)
+                session.commit()
+                session.refresh(new_invoice)
+                logging.info("invoice added successfully")
+                return new_invoice
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to add invoice to the database: {e}")
+                return None
+
+    def get_invoice(
+            self,
+            id: Optional[int] = None,
+            saler: Optional[str] = None,
+            pay_id: Optional[int] = None,
+            closed:Optional[bool] = None,
+            from_date: Optional[datetime] = None,
+            to_date: Optional[datetime] = None,
+            row_num: Optional[int] = None,
+
+    ) -> list[Invoice]:
+        """Get invoice with optional filters
+
+
+
+        Returns:
+            List of matching invoices (empty list if no matches or no filters provided)
+        """
+        with self.Session() as session:
+                try:
+                    query = session.query(Invoice).order_by(Invoice.date.desc())
+                    if id:
+                        query = query.filter_by(id=id)
+                    if closed is not None:
+                        query = query.filter_by(closed=closed)
+
+                    if pay_id:
+                        check = session.get(InvoicePayment, pay_id)
+                        if not check:
+                            logging.info(f"No ship found with pay_id: {pay_id}")
+                            return []
+                        query = query.filter_by(pay_id=pay_id)
+
+                    if saler:
+                        saler = saler.lower().strip()
+                        query = query.filter_by(saler=saler)
+
+                    if from_date:
+                        query = query.filter(Invoice.date >= from_date)
+
+                    if to_date:
+                        query = query.filter(Invoice.date <= to_date)
+
+                    if row_num:
+                        query = query.limit(row_num)
+
+                    result = query.all()
+                    logging.info(f"Found {len(result)} invoices")
+
+                    return cast(List[Invoice], result)
+
+                except Exception as e:
+                    session.rollback()
+                    logging.error(f"Error fetching invoice(s): {str(e)}")
+                    return []
+
+
+    def edit_invoice(self, invoice:Invoice) -> Optional[Invoice]:
+        """
+        Updates an existing invoice in the database.
+
+        Args:
+            invoice: The Invoice object with updated values.
+                         Must have valid id.
+
+        Returns:
+            The updated invoice if successful, None on error.
+        """
+        fields_to_process = ['saler']
+        for field in fields_to_process:
+            value = getattr(invoice, field, None)
+            if isinstance(value, str):
+                setattr(invoice, field, value.strip().lower())
+        if not invoice.id:
+            logging.info("No invoice id")
+            return None
+
+        with self.Session() as session:
+            try:
+                existing = session.get(Invoice, invoice.id)
+                if not existing:
+                    logging.info(f"No invoice found with ID: {invoice.id} ")
+                    return None
+                merged_invoice  = session.merge(invoice)
+                session.commit()
+                session.refresh(merged_invoice )
+                logging.info(f"Successfully updated invoice with ids: {invoice.id}")
+                return merged_invoice
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to update invoice with ids: {invoice.id}: {e}")
+                return None
+
+    def delete_invoice(self, invoice:Invoice) -> bool:
+        """
+        Deletes a invoice.
+        Returns True if deleted, False otherwise.
+        """
+
+        if not invoice.id:
+            logging.error("Cannot delete supply record without invoice id.")
+            return False
+
+        with self.Session() as session:
+
+            try:
+                the_invoice = session.get(Invoice, invoice.id)
+                if the_invoice:
+                    session.delete(the_invoice)
+                    session.commit()
+                    logging.info(f"Deleted invoice with id: {invoice.id}")
+                    return True
+                else:
+                    logging.warning(f"invoice with id {invoice.id} not found for deletion.")
+                    return False
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to delete invoice {invoice.id}: {e}")
+                return False
+
+
+
+
 db = DbHandler()
-#todo in update later the lower strip

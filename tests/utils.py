@@ -56,11 +56,17 @@ def crud_cycle_test(db_handler: Any,
     #___UPDATE___
     for key, value in update_kwargs.items():
         setattr(fetched, key, value)
+    cleaned_update_kwargs = update_kwargs.copy()
+    for key, value in update_kwargs.items():
+        if isinstance(value, str) and not key in ["contact_address", 'description', 'receiver_id']:
+           cleaned_update_kwargs[key] = value.strip().lower()
 
     edit_func = getattr(db_handler, f"edit_{model_name}")
     updated = edit_func(fetched)
     assert updated is not None
-    for key, value in update_kwargs.items():
+    for key, value in cleaned_update_kwargs.items():
+        a = getattr(updated, key)
+        b = value
         assert getattr(updated, key) == value
 
     #___DELETE___
