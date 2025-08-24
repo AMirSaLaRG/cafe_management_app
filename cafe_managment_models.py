@@ -252,7 +252,7 @@ class InventoryUsage(Base):
 
     inventory_item = relationship("Inventory", back_populates="usage_records")
     usage = relationship("Usage", back_populates="inventory_usage")
-
+#done
 class MenuUsage(Base):
     __tablename__ = "menu_usage"
 
@@ -276,10 +276,13 @@ class SalesForecast(Base):
     id = Column(Integer, primary_key=True)
     menu_item_id = Column(ForeignKey("menu.id"))
 
-    from_date = Column(Date)
-    to_date = Column(Date)
+    from_date = Column(DateTime)
+    to_date = Column(DateTime)
 
     sell_number = Column(Integer)
+
+    time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
 
     menu_item = relationship("Menu", back_populates="forecast")
 

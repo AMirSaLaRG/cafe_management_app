@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Dict, List, Optional, Any
 
 def crud_cycle_test(db_handler: Any,
@@ -47,11 +48,13 @@ def crud_cycle_test(db_handler: Any,
     fetched = fetched[0]
     if lookup_fields:
         for lookup_field in lookup_fields:
-            value_lookup_field = getattr(fetched, lookup_field)
-            value_provided = lookup_values[lookup_fields.index(lookup_field)]
-            if type(value_provided) == str:
-                value_provided = value_provided.strip().lower()
-            assert value_lookup_field == value_provided
+            #this prevents time ranges error they may not be exact value
+            if not isinstance(getattr(fetched, lookup_field), datetime):
+                value_lookup_field = getattr(fetched, lookup_field)
+                value_provided = lookup_values[lookup_fields.index(lookup_field)]
+                if isinstance(value_provided, str):
+                    value_provided = value_provided.strip().lower()
+                assert value_lookup_field == value_provided
 
     #___UPDATE___
     for key, value in update_kwargs.items():

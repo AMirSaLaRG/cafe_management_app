@@ -2430,4 +2430,185 @@ class DbHandler:
 
 
 
+    #--SalesForecast--
+
+    def add_salesforecast(self,
+                          menu_item_id: int,
+                          from_date: datetime,
+                          to_date: datetime,
+                          sell_number:int,
+                    ) -> Optional[SalesForecast]:
+
+        """ adding new SalesForecast  """
+        if sell_number is not None and sell_number < 0:
+            logging.error("Total amount can not be negative")
+            return None
+
+        if from_date >= to_date:
+            logging.error("from date should be less than to date ")
+            return None
+
+
+
+        with self.Session() as session:
+            try:
+                menu_check = session.get(Menu, menu_item_id)
+                if not menu_check:
+                    logging.info(f"No menu item found with ID: {menu_item_id}")
+                    return None
+
+                existing_overlap = session.query(SalesForecast).filter(
+                    SalesForecast.menu_item_id == menu_item_id,
+                    SalesForecast.from_date < to_date,
+                    SalesForecast.to_date > from_date
+                ).first()
+
+                if existing_overlap:
+                    logging.error(f"Time overlap with existing forecast (ID: {existing_overlap.id}) "
+                                  f"from {existing_overlap.from_date} to {existing_overlap.to_date}")
+                    return None
+
+
+                new_sales_forecast = SalesForecast(
+                    menu_item_id=menu_item_id,
+                    from_date=from_date,
+                    to_date=to_date,
+                    sell_number=sell_number,
+                )
+                session.add(new_sales_forecast)
+                session.commit()
+                session.refresh(new_sales_forecast)
+                logging.info("sales_forecast added successfully")
+                return new_sales_forecast
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to add sales_forecast to the database: {e}")
+                return None
+
+    def get_salesforecast(
+            self,
+            id: Optional[int] = None,
+            menu_item_id: Optional[int] = None,
+            from_date: Optional[datetime] = None,
+            to_date: Optional[datetime] = None,
+            row_num: Optional[int] = None,
+    ) -> list[SalesForecast]:
+        """Get sales_forecast with optional filters
+
+
+
+        Returns:
+            List of matching SalesForecast (empty list if no matches or no filters provided)
+        """
+
+        with self.Session() as session:
+                try:
+                    query = session.query(SalesForecast).order_by(SalesForecast.from_date.desc())
+                    if id:
+                        query = query.filter_by(id=id)
+                    if menu_item_id:
+                        query = query.filter_by(menu_item_id=menu_item_id)
+
+                    if from_date:
+                        query = query.filter(SalesForecast.from_date >= from_date)
+
+                    if to_date:
+                        query = query.filter(SalesForecast.from_date <= to_date)
+
+                    if row_num:
+                        query = query.limit(row_num)
+
+                    result = query.all()
+                    logging.info(f"Found {len(result)} sales_forecast")
+
+                    return cast(list[SalesForecast], result)
+
+                except Exception as e:
+                    session.rollback()
+                    logging.error(f"Error fetching sales_forecast: {str(e)}")
+                    return []
+
+
+    def edit_salesforecast(self, sales_forecast:SalesForecast) -> Optional[SalesForecast]:
+        """
+        Updates an existing sales_forecast in the database.
+
+        Args:
+            sales_forecast: The SalesForecast object with updated values.
+                         Must have valid ID.
+
+        Returns:
+    The updated SalesForecast if successful, None on error.  
+        """
+
+        # fields_to_process = ['used_by', "category"]
+        # for field in fields_to_process:
+        #     value = getattr(usage, field, None)
+        #     if isinstance(value, str):
+        #         setattr(usage, field, value.strip().lower())
+
+        if sales_forecast.from_date and sales_forecast.to_date:
+            if sales_forecast.from_date >= sales_forecast.to_date:
+                logging.error("from date should be less than to date ")
+                return None
+
+        with self.Session() as session:
+            try:
+                existing_overlap = session.query(SalesForecast).filter(
+                    SalesForecast.id != sales_forecast.id,
+                    SalesForecast.menu_item_id == sales_forecast.menu_item_id,
+                    SalesForecast.from_date < sales_forecast.to_date,
+                    SalesForecast.to_date > sales_forecast.from_date
+                ).first()
+
+                if existing_overlap:
+                    logging.error(f"Time overlap with existing forecast (ID: {existing_overlap.id})")
+                    return None
+
+                menu_exists = session.get(Menu, sales_forecast.menu_item_id)
+                if not menu_exists:
+                    logging.info(f"No menu item found with IDs: {sales_forecast.menu_item_id} ")
+                    return None
+
+
+                new_sales_forecast  = session.merge(sales_forecast)
+                session.commit()
+                session.refresh(new_sales_forecast)
+                logging.info(f"Successfully updated sales_forecast")
+                return new_sales_forecast
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to update sales_forecast : {e}")
+                return None
+
+    def delete_salesforecast(self, sales_forecast:SalesForecast) -> bool:
+        """
+        Deletes a SalesForecast.
+        Returns True if deleted, False otherwise.
+        """
+
+        if not sales_forecast.id:
+            logging.error("Cannot delete sales_forecast record without ID.")
+            return False
+
+        with self.Session() as session:
+
+            try:
+                the_sales_forecast = session.get(SalesForecast, sales_forecast.id)
+                if the_sales_forecast:
+                    session.delete(the_sales_forecast)
+                    session.commit()
+                    logging.info(f"Deleted sales_forecast with ID: {sales_forecast.id}")
+                    return True
+                else:
+                    logging.warning(f"sales_forecast with ids {sales_forecast.id} not found for deletion.")
+                    return False
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to delete sales_forecast {sales_forecast.id}: {e}")
+                return False
+
+
+
+
 db = DbHandler()
