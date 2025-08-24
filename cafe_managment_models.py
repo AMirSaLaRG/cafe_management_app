@@ -287,6 +287,7 @@ class SalesForecast(Base):
     menu_item = relationship("Menu", back_populates="forecast")
 
 #CLEANING AS WELL
+#done
 class EstimatedBills(Base):
     __tablename__ = "estimated_bills"
 
@@ -305,10 +306,11 @@ class TargetPositionAndSalary(Base):
     __tablename__ = "target_position_and_salary"
 
     id = Column(Integer, primary_key=True)
-    position = Column(String(250), nullable=False)
+    position = Column(String, nullable=False)
+    category = Column(String)
     from_date = Column(DateTime)
     to_date = Column(DateTime)
-    monthly_hr = Column(Integer)
+    monthly_hr = Column(Float)
     monthly_payment = Column(Float)
     monthly_insurance = Column(Float)
     extra_hr_payment = Column(Float)
