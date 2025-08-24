@@ -84,7 +84,7 @@ def test_estimatedmenupricerecord_date_ranges(in_memory_db):
 
 
     # Create multiple records with different dates
-    base_date = datetime.now().date()
+    base_date = datetime.now()
     for i in range(5):
         in_memory_db.add_estimatedmenupricerecord(
             menu_id=menu_item.id,
@@ -94,7 +94,7 @@ def test_estimatedmenupricerecord_date_ranges(in_memory_db):
         )
 
 
-    # Test date range filtering (should get 2 records)
+    # Test date range filtering (should get 3 records the last day will be include as well)
     records = in_memory_db.get_estimatedmenupricerecord(
         menu_id=menu_item.id,
         from_date=base_date + timedelta(days=14),
@@ -116,9 +116,9 @@ def test_estimatedmenupricerecord_get_last(in_memory_db):
 
     # Explicitly define test dates (newest to oldest)
     test_dates = [
-        datetime.now().date(),  # Today (most recent)
-        datetime.now().date() - timedelta(days=2),  # 2 days ago
-        datetime.now().date() - timedelta(days=4)  # 4 days ago
+        datetime.now(),  # Today (most recent)
+        datetime.now() - timedelta(days=2),  # 2 days ago
+        datetime.now()- timedelta(days=4)  # 4 days ago
     ]
 
     for i, date in enumerate(test_dates):

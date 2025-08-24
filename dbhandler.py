@@ -2538,7 +2538,7 @@ class DbHandler:
                          Must have valid ID.
 
         Returns:
-    The updated SalesForecast if successful, None on error.  
+    The updated SalesForecast if successful, None on error.
         """
 
         # fields_to_process = ['used_by', "category"]
@@ -2606,6 +2606,203 @@ class DbHandler:
             except Exception as e:
                 session.rollback()
                 logging.error(f"Failed to delete sales_forecast {sales_forecast.id}: {e}")
+                return False
+
+
+
+
+    #--EstimatedBills--
+
+    def add_estimatedbills(self,
+                          name: str,
+                           category: str,
+                          from_date: datetime,
+                          to_date: datetime,
+                          cost: Optional[float] = None,
+                          description:Optional[str] = None,
+                    ) -> Optional[EstimatedBills]:
+
+        """ adding new EstimatedBills  """
+        if cost is not None and cost < 0:
+            logging.error("Total amount can not be negative")
+            return None
+
+        if from_date >= to_date:
+            logging.error("from date should be less than to date ")
+            return None
+
+        if name is not None:
+            name = name.lower().strip()
+
+        if category is not None:
+            category = category.lower().strip()
+
+        with self.Session() as session:
+            try:
+
+                existing_overlap = session.query(EstimatedBills).filter(
+                    EstimatedBills.category == category,
+                    EstimatedBills.from_date < to_date,
+                    EstimatedBills.to_date > from_date
+                ).first()
+
+                if existing_overlap:
+                    logging.error(f"Time overlap with existing estimated  (ID: {existing_overlap.id}) "
+                                  f"from {existing_overlap.from_date} to {existing_overlap.to_date}")
+                    return None
+
+
+                new_estimated_bill = EstimatedBills(
+                    name=name,
+                    category=category,
+                    cost=cost,
+                    from_date=from_date,
+                    to_date=to_date,
+                    description=description,
+                )
+                session.add(new_estimated_bill)
+                session.commit()
+                session.refresh(new_estimated_bill)
+                logging.info("estimated_bills added successfully")
+                return new_estimated_bill
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to add estimated_bills to the database: {e}")
+                return None
+
+    def get_estimatedbills(
+            self,
+            id: Optional[int] = None,
+            name: Optional[str] = None,
+            category: Optional[str] = None,
+            from_date: Optional[datetime] = None,
+            to_date: Optional[datetime] = None,
+            row_num: Optional[int] = None,
+    ) -> list[EstimatedBills]:
+        """Get estimated_bills with optional filters
+
+
+
+        Returns:
+            List of matching EstimatedBills (empty list if no matches or no filters provided)
+        """
+
+        if from_date and to_date and from_date >= to_date:
+            logging.error("from_date should be less than to_date")
+            return []
+
+        if name is not None:
+            name = name.lower().strip()
+
+        if category is not None:
+            category = category.lower().strip()
+
+        with self.Session() as session:
+                try:
+                    query = session.query(EstimatedBills).order_by(EstimatedBills.from_date.desc())
+                    if id:
+                        query = query.filter_by(id=id)
+
+                    if name:
+                        query = query.filter_by(name=name)
+
+                    if category:
+                        query = query.filter_by(category=category)
+
+                    if from_date:
+                        query = query.filter(EstimatedBills.from_date >= from_date)
+                        a = len(query.all())
+
+                    if to_date:
+                        query = query.filter(EstimatedBills.from_date <= to_date)
+                        b = query.all()
+
+                    if row_num:
+                        query = query.limit(row_num)
+
+                    result = query.all()
+                    logging.info(f"Found {len(result)} estimated_bills")
+
+                    return cast(list[EstimatedBills], result)
+
+                except Exception as e:
+                    session.rollback()
+                    logging.error(f"Error fetching estimated_bills: {str(e)}")
+                    return []
+
+
+    def edit_estimatedbills(self, estimated_bills:EstimatedBills) -> Optional[EstimatedBills]:
+        """
+        Updates an existing estimated_bills in the database.
+
+        Args:
+            estimated_bills: The EstimatedBills object with updated values.
+                         Must have valid ID.
+
+        Returns:
+    The updated EstimatedBills if successful, None on error.
+        """
+
+        fields_to_process = ['name', "category"]
+        for field in fields_to_process:
+            value = getattr(estimated_bills, field, None)
+            if isinstance(value, str):
+                setattr(estimated_bills, field, value.strip().lower())
+
+        if estimated_bills.from_date and estimated_bills.to_date:
+            if estimated_bills.from_date >= estimated_bills.to_date:
+                logging.error("from date should be less than to date ")
+                return None
+
+        with self.Session() as session:
+            try:
+                existing_overlap = session.query(EstimatedBills).filter(
+                    EstimatedBills.id != estimated_bills.id,
+                    EstimatedBills.category == estimated_bills.category,
+                    EstimatedBills.from_date < estimated_bills.to_date,
+                    EstimatedBills.to_date > estimated_bills.from_date
+                ).first()
+
+                if existing_overlap:
+                    logging.error(f"Time overlap with existing estimated_bills (ID: {existing_overlap.id})")
+                    return None
+
+
+                new_estimated_bill  = session.merge(estimated_bills)
+                session.commit()
+                session.refresh(new_estimated_bill)
+                logging.info(f"Successfully updated estimated_bills")
+                return new_estimated_bill
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to update estimated_bills : {e}")
+                return None
+
+    def delete_estimatedbills(self, estimated_bills:EstimatedBills) -> bool:
+        """
+        Deletes a EstimatedBills.
+        Returns True if deleted, False otherwise.
+        """
+
+        if not estimated_bills.id:
+            logging.error("Cannot delete estimated_bills record without ID.")
+            return False
+
+        with self.Session() as session:
+
+            try:
+                the_estimated_bill = session.get(EstimatedBills, estimated_bills.id)
+                if the_estimated_bill:
+                    session.delete(the_estimated_bill)
+                    session.commit()
+                    logging.info(f"Deleted estimated_bills with ID: {estimated_bills.id}")
+                    return True
+                else:
+                    logging.warning(f"estimated_bills with ID {estimated_bills.id} not found for deletion.")
+                    return False
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to delete estimated_bills {estimated_bills.id}: {e}")
                 return False
 
 

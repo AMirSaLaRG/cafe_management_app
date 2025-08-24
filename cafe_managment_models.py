@@ -16,7 +16,7 @@ class Inventory(Base):
     category = Column(String(255))
     price_per_unit = Column(Float)
     initial_value = Column(Float)
-    date_of_initial_value = Column(Date)
+    date_of_initial_value = Column(DateTime)
 
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
@@ -80,8 +80,8 @@ class EstimatedMenuPriceRecord(Base):
 
     estimated_price = Column(Float)
     manual_price = Column(Float)
-    from_date = Column(Date, nullable=False, index=True)
-    estimated_to_date = Column(Date)
+    from_date = Column(DateTime, nullable=False, index=True)
+    estimated_to_date = Column(DateTime)
 
     description = Column(String(500))
 
@@ -269,7 +269,7 @@ class MenuUsage(Base):
 
 
 #_______________THIS TABLES WE TRY TO ESTIMATE HOW THINK WILL BE FROM EXP TO GET PREDICT INDIRECT COSTS __________________________
-
+#done
 class SalesForecast(Base):
     __tablename__ = "sales_forecast"
 
@@ -292,18 +292,22 @@ class EstimatedBills(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
+    category = Column(String)
     cost = Column(Float)
-    from_date = Column(Date)
-    to_date = Column(Date)
+    from_date = Column(DateTime)
+    to_date = Column(DateTime)
     description = Column(String(500))
+
+    time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
 
 class TargetPositionAndSalary(Base):
     __tablename__ = "target_position_and_salary"
 
     id = Column(Integer, primary_key=True)
     position = Column(String(250), nullable=False)
-    from_date = Column(Date)
-    to_date = Column(Date)
+    from_date = Column(DateTime)
+    to_date = Column(DateTime)
     monthly_hr = Column(Integer)
     monthly_payment = Column(Float)
     monthly_insurance = Column(Float)
@@ -317,7 +321,7 @@ class Shift(Base):
 
     id = Column(Integer, primary_key=True)
     target_position_id = Column(ForeignKey("target_position_and_salary.id"))
-    date = Column(Date)
+    date = Column(DateTime)
     from_hr = Column(Time)
     to_hr = Column(Time)
     name = Column(String)
@@ -338,11 +342,11 @@ class Equipment(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
     category = Column(String)
-    purchase_date = Column(Date)
+    purchase_date = Column(DateTime)
     perche_price = Column(Float)
     payer = Column(String)
     in_use= Column(Boolean)
-    expire_date = Column(Date)
+    expire_date = Column(DateTime)
     monthly_depreciation = Column(Float)
     description = Column(String(500))
 
@@ -353,8 +357,8 @@ class Rent(Base):
     rent = Column(Float)
     mortgage = Column(Float)
     mortgage_percentage_to_rent = Column(Float)
-    from_date = Column(Date)
-    to_date = Column(Date)
+    from_date = Column(DateTime)
+    to_date = Column(DateTime)
     payer = Column(String)
     description = Column(String(500))
 
@@ -366,8 +370,8 @@ class Bills(Base):
 
     id = Column(Integer, primary_key=True)
     name=Column(String)
-    from_date = Column(Date)
-    to_date = Column(Date)
+    from_date = Column(DateTime)
+    to_date = Column(DateTime)
     cost = Column(Float)
     payer = Column(String)
     description=Column(String)
@@ -385,7 +389,7 @@ class Personal(Base):
     email= Column(String(250))
     phone =  Column(String(30))
     address = Column(String(300))
-    hire_date = Column(Date)
+    hire_date = Column(DateTime)
     position = Column(String(250))
     active = Column(Boolean)
     description = Column(String(300))
@@ -415,8 +419,8 @@ class RecordEmployeePayment(Base):
 
     id = Column(Integer, primary_key=True)
     personal_id = Column(ForeignKey("personal.id"))
-    from_date = Column(Date)
-    to_date = Column(Date)
+    from_date = Column(DateTime)
+    to_date = Column(DateTime)
     payment = Column(Float)
     insurance = Column(Float)
     work_hr = Column(Float)
