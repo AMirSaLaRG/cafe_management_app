@@ -337,7 +337,6 @@ class Shift(Base):
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
-    shift_record = relationship("WorkShiftRecord", back_populates="shift")
     labor = relationship("EstimatedLabor", back_populates="shift")
 
 class EstimatedLabor(Base):
@@ -428,12 +427,13 @@ class Personal(Base):
 
     payments = relationship("RecordEmployeePayment", back_populates="personal")
     shift_record = relationship("WorkShiftRecord", back_populates="personal")
+
 class WorkShiftRecord(Base):
     __tablename__ = "working_shift_record"
 
     id = Column(Integer, primary_key=True)
-    shift_id = Column(ForeignKey("shift.id"))
     personal_id = Column(ForeignKey("personal.id"))
+    date = Column(DateTime)
     start_hr = Column(Time)
     end_hr = Column(Time)
     worked_hr = Column(Float)
@@ -445,7 +445,6 @@ class WorkShiftRecord(Base):
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
-    shift = relationship("Shift", back_populates="shift_record")
     personal = relationship("Personal", back_populates="shift_record")
 
 

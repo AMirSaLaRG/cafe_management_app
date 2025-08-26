@@ -3963,4 +3963,216 @@ class DbHandler:
 
 
 
+    #--WorkShiftRecord--
+
+    def add_workshiftrecord(self,
+                      personal_id: int,
+                      date: Optional[datetime] = None,
+                      start_hr: Optional[time] = None,
+                      end_hr: Optional[time] = None,
+                      worked_hr: Optional[float] = None,
+                      lunch_payed: Optional[float] = None,
+                      service_payed: Optional[float] = None,
+                      extra_payed: Optional[float] = None,
+                      description: Optional[str] = None,
+                      ) -> Optional[WorkShiftRecord]:
+
+        """ adding new record to db  """
+
+        if worked_hr is not None and worked_hr < 0:
+            logging.error('Value cannot be negative')
+            return None
+
+        if lunch_payed is not None and lunch_payed < 0:
+            logging.error('Value cannot be negative')
+            return None
+
+        if service_payed is not None and service_payed < 0:
+            logging.error('Value cannot be negative')
+            return None
+
+        if extra_payed is not None and extra_payed < 0:
+            logging.error('Value cannot be negative')
+            return None
+
+        if start_hr and end_hr and start_hr > end_hr:
+            logging.error("start time can not be later than end time")
+            return None
+
+
+        with self.Session() as session:
+            try:
+                existence = session.get(Personal, personal_id)
+                if not existence:
+                    logging.error("This personal id does not exist")
+                    return None
+
+                over_lap = session.query(WorkShiftRecord).filter(
+                    WorkShiftRecord.personal_id == personal_id,
+                    WorkShiftRecord.date == date,
+                    WorkShiftRecord.start_hr < end_hr,
+                    WorkShiftRecord.end_hr > start_hr
+                ).first()
+                if over_lap:
+                    logging.error("this time overlaps with other record of this person")
+                    return None
+
+                new_one = WorkShiftRecord(
+                    personal_id=personal_id,
+                    date=date,
+                    start_hr=start_hr,
+                    end_hr=end_hr,
+                    worked_hr=worked_hr,
+                    lunch_payed=lunch_payed,
+                    service_payed=service_payed,
+                    extra_payed=extra_payed,
+                    description=description,
+
+                )
+                session.add(new_one)
+                session.commit()
+                session.refresh(new_one)
+                logging.info("added successfully")
+                return new_one
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to add WorkShiftRecord to the database: {e}")
+                return None
+
+    def get_workshiftrecord(
+            self,
+            id: Optional[int] = None,
+            personal_id: Optional[int] = None,
+            from_hr: Optional[time] = None,
+            to_hr: Optional[time] = None,
+            from_date: Optional[datetime] = None,
+            to_date: Optional[datetime] = None,
+            row_num: Optional[int] = None,
+    ) -> list[WorkShiftRecord]:
+        """Get with optional filters
+        Returns:
+            List of matching Objects (empty list if no matches or no filters provided)
+        """
+
+        if from_date and to_date and from_date >= to_date:
+            logging.error("from_date should be less than to_date")
+            return []
+        if from_hr and to_hr and from_hr >= to_hr:
+            logging.error("from_hr should be less than to_hr")
+            return []
+
+        with self.Session() as session:
+                try:
+                    query = session.query(WorkShiftRecord).order_by(WorkShiftRecord.date.desc())
+                    if id:
+                        query = query.filter_by(id=id)
+
+
+                    if personal_id:
+                        query = query.filter_by(personal_id=personal_id)
+
+
+                    if from_hr:
+                        query = query.filter(WorkShiftRecord.start_hr >= from_hr)
+
+                    if to_hr:
+                        query = query.filter(WorkShiftRecord.start_hr <= to_hr)
+
+                    if from_date:
+                        query = query.filter(WorkShiftRecord.date >= from_date)
+
+                    if to_date:
+                        query = query.filter(WorkShiftRecord.date <= to_date)
+
+                    if row_num:
+                        query = query.limit(row_num)
+
+                    result = query.all()
+                    logging.info(f"Found {len(result)}")
+
+                    return cast(list[WorkShiftRecord], result)
+
+                except Exception as e:
+                    session.rollback()
+                    logging.error(f"Error fetching WorkShiftRecord: {str(e)}")
+                    return []
+
+
+    def edit_workshiftrecord(self,
+                                     working_shift_record:WorkShiftRecord
+                                     ) -> Optional[WorkShiftRecord]:
+        """
+        Args:
+            working_shift_record: The personal object with updated values.
+
+        Returns:
+        The updated WorkShiftRecord if successful, None on error.
+        """
+        if not working_shift_record.id:
+            logging.error("Cannot update working_shift_record without ID")
+            return None
+
+        # fields_to_process = ["first_name", "last_name", "position", "nationality_code"]
+        # for field in fields_to_process:
+        #     value = getattr(working_shift_record, field, None)
+        #     if isinstance(value, str):
+        #         setattr(working_shift_record, field, value.strip().lower())
+
+        with self.Session() as session:
+            try:
+                existing = session.get(WorkShiftRecord, working_shift_record.id)
+                if not existing:
+                    logging.error(f"No working_shift_record found with ID: {working_shift_record.id}")
+                    return None
+                over_lap = session.query(WorkShiftRecord).filter(
+                    WorkShiftRecord.id != working_shift_record.id,
+                    WorkShiftRecord.personal_id == working_shift_record.personal_id,
+                    WorkShiftRecord.date == working_shift_record.date,
+                    WorkShiftRecord.start_hr < working_shift_record.end_hr,
+                    WorkShiftRecord.end_hr > working_shift_record.start_hr
+                ).first()
+                if over_lap:
+                    logging.error("this time overlaps with other record of this person")
+                    return None
+                merged  = session.merge(working_shift_record)
+                session.commit()
+                session.refresh(merged)
+                logging.info(f"Successfully updated")
+                return merged
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to update WorkShiftRecord : {e}")
+                return None
+
+    def delete_workshiftrecord(self, working_shift_record:WorkShiftRecord) -> bool:
+        """
+        Deletes a WorkShiftRecord from the database.
+        Returns True if deleted, False otherwise.
+        """
+
+        if not working_shift_record.id:
+            logging.error("Cannot delete WorkShiftRecord without ID")
+            return False
+
+        with self.Session() as session:
+
+            try:
+                obj = session.get(WorkShiftRecord, working_shift_record.id)
+                if obj:
+                    session.delete(obj)
+                    session.commit()
+                    logging.info(f"Deleted working_shift_record ID: {working_shift_record.id}")
+                    return True
+                else:
+                    logging.warning(f"working_shift_record with ID {working_shift_record.id} not found")
+                    return False
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to delete working_shift_record {working_shift_record.id}: {e}")
+                return False
+
+
+
+
+
 db = DbHandler()
