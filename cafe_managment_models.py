@@ -301,7 +301,7 @@ class EstimatedBills(Base):
 
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-
+#done
 class TargetPositionAndSalary(Base):
     __tablename__ = "target_position_and_salary"
 
@@ -315,14 +315,16 @@ class TargetPositionAndSalary(Base):
     monthly_insurance = Column(Float)
     extra_hr_payment = Column(Float)
 
-    shifts = relationship("Shift", back_populates="target_position")
+    time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    labor = relationship("EstimatedLabor", back_populates="position")
+
 
 
 class Shift(Base):
     __tablename__ = "shift"
 
     id = Column(Integer, primary_key=True)
-    target_position_id = Column(ForeignKey("target_position_and_salary.id"))
     date = Column(DateTime)
     from_hr = Column(Time)
     to_hr = Column(Time)
@@ -332,9 +334,23 @@ class Shift(Base):
     extra_payment = Column(Float)
     description = Column(String(500))
 
-    target_position = relationship("TargetPositionAndSalary", back_populates="shifts")
-    shift_record = relationship("WorkShiftRecord", back_populates="shift")
+    time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+
+    shift_record = relationship("WorkShiftRecord", back_populates="shift")
+    labor = relationship("EstimatedLabor", back_populates="shift")
+
+class EstimatedLabor(Base):
+    __tablename__ = "estimated_labor"
+    position_id = Column(ForeignKey("target_position_and_salary.id"), primary_key=True)
+    shift_id = Column(ForeignKey("shift.id"), primary_key=True)
+    number = Column(Integer)
+
+    time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+    position = relationship("TargetPositionAndSalary", back_populates="labor")
+    shift = relationship("Shift", back_populates="labor")
 
 #_______________THIS TABLES HELPS TO FORECAST INDIRECT COSTS BUT THEY ARE CONSTANT MOSTLY SO HELPS RECORD AS WELL__________________________
 
@@ -343,14 +359,19 @@ class Equipment(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
+    number = Column(Integer)
     category = Column(String)
     purchase_date = Column(DateTime)
-    perche_price = Column(Float)
+    purchase_price = Column(Float)
     payer = Column(String)
     in_use= Column(Boolean)
     expire_date = Column(DateTime)
     monthly_depreciation = Column(Float)
     description = Column(String(500))
+
+
+    time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
 
 class Rent(Base):
     __tablename__ = "rent"

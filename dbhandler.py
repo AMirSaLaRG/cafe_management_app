@@ -2,7 +2,7 @@ from typing import Optional, List, Tuple, Union, cast
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime
+from datetime import datetime, time
 import logging
 from cafe_managment_models import *
 
@@ -3021,6 +3021,577 @@ class DbHandler:
                 session.rollback()
                 logging.error(f"Failed to delete TargetPositionAndSalary {target_position_and_salary.id}: {e}")
                 return False
+
+
+
+
+
+
+    #--Shift--
+
+    def add_shift(self,
+                            date: datetime,
+                          from_hr: time,
+                          to_hr: time,
+                          name: Optional[str] = None,
+                          lunch_payment: Optional[float] = None,
+                          service_payment: Optional[float] = None,
+                          extra_payment: Optional[float] = None,
+                          description: Optional[str] = None,
+                    ) -> Optional[Shift]:
+
+        """ adding new record to db  """
+
+        if lunch_payment is not None and lunch_payment < 0:
+            logging.error("Total amount can not be negative")
+            return None
+
+        if service_payment is not None and service_payment < 0:
+            logging.error("Total amount can not be negative")
+            return None
+
+        if extra_payment is not None and extra_payment < 0:
+            logging.error("Total amount can not be negative")
+            return None
+
+        if from_hr >= to_hr:
+            logging.error("from date should be less than to time ")
+            return None
+
+        if name is not None:
+            name = name.lower().strip()
+
+        with self.Session() as session:
+            try:
+
+                # existing_overlap = session.query(Shift).filter(
+                #     Shift.date == date,
+                #     Shift.from_hr < to_hr,  # CORRECT - Proper overlap detection
+                #     Shift.to_hr > from_hr  # CORRECT - Check if existing shift ends after new shift starts
+                # ).first()
+                #
+                # if existing_overlap:
+                #     logging.error(f"Time overlap with existing shift ID: {existing_overlap.id}) "
+                #                   f"from {existing_overlap.from_hr} to {existing_overlap.to_hr}")
+                #     return None
+
+
+                new_one = Shift(
+                    date=date,
+                    from_hr=from_hr,
+                    to_hr=to_hr,
+                    name=name,
+                    lunch_payment=lunch_payment,
+                    service_payment=service_payment,
+                    extra_payment=extra_payment,
+                    description=description,
+                )
+                session.add(new_one)
+                session.commit()
+                session.refresh(new_one)
+                logging.info("added successfully")
+                return new_one
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to add Shift to the database: {e}")
+                return None
+    #problem datetime time hr
+    def get_shift(
+            self,
+            id: Optional[int] = None,
+            name: Optional[str] = None,
+            from_date: Optional[datetime] = None,
+            to_date: Optional[datetime] = None,
+            date: Optional[datetime] = None,
+            from_hr: Optional[time] = None,
+            to_hr: Optional[time] = None,
+            row_num: Optional[int] = None,
+    ) -> list[Shift]:
+        """Get with optional filters
+
+
+
+        Returns:
+            List of matching Objects (empty list if no matches or no filters provided)
+        """
+
+        if from_date and to_date and from_date >= to_date:
+            logging.error("from_date should be less than to_date")
+            return []
+        if from_hr and to_hr and from_hr >= to_hr:
+            logging.error("from_hr should be less than to_hr")
+            return []
+
+        if name is not None:
+            name = name.lower().strip()
+
+        with self.Session() as session:
+                try:
+                    query = session.query(Shift).order_by(Shift.date.desc())
+                    if id:
+                        query = query.filter_by(id=id)
+
+                    if name:
+                        query = query.filter_by(name=name)
+
+
+                    if from_date:
+                        query = query.filter(Shift.date >= from_date)
+
+                    if to_date:
+                        query = query.filter(Shift.date <= to_date)
+
+                    if date:
+                        query = query.filter(Shift.date == date)
+
+
+                    if from_hr and to_hr:
+                        query = query.filter(
+                            Shift.from_hr < to_hr,  # Shift starts before the end of search window
+                            Shift.to_hr > from_hr  # Shift ends after the start of search window
+                        )
+
+
+                    elif from_hr:
+                        query = query.filter(Shift.from_hr >= from_hr)
+
+
+
+                    elif to_hr:
+                        query = query.filter(Shift.from_hr <= to_hr)
+
+
+                    if row_num:
+                        query = query.limit(row_num)
+
+                    result = query.all()
+                    logging.info(f"Found {len(result)}")
+
+                    return cast(list[Shift], result)
+
+                except Exception as e:
+                    session.rollback()
+                    logging.error(f"Error fetching Shift: {str(e)}")
+                    return []
+
+
+    def edit_shift(self,
+                                     shift:Shift
+                                     ) -> Optional[Shift]:
+        """
+        Updates an existing Object in the database.
+
+        Args:
+            shift: The Shift object with updated values.
+                         Must have valid ID.
+
+        Returns:
+        The updated Object if successful, None on error.
+        """
+
+        fields_to_process = ['name']
+        for field in fields_to_process:
+            value = getattr(shift, field, None)
+            if isinstance(value, str):
+                setattr(shift, field, value.strip().lower())
+
+
+        if shift.from_hr and shift.to_hr:
+            if shift.from_hr >= shift.to_hr:
+                logging.error("from hr should be less than to hr ")
+                return None
+
+        with self.Session() as session:
+            try:
+                # existing_overlap = session.query(Shift).filter(
+                #     Shift.id != shift.id,
+                #     Shift.date == shift.date,
+                #     Shift.from_hr < shift.to_hr,
+                #     Shift.to_hr > shift.from_hr
+                # ).first()
+                #
+                # if existing_overlap:
+                #     logging.error(f"`Time overlap with existing (ID: {existing_overlap.id})")
+                #     return None
+
+
+                merged  = session.merge(shift)
+                session.commit()
+                session.refresh(merged)
+                logging.info(f"Successfully updated")
+                return merged
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to update Shift : {e}")
+                return None
+
+    def delete_shift(self, shift:Shift) -> bool:
+        """
+        Deletes an Object from the database.
+        Returns True if deleted, False otherwise.
+        """
+
+        if not shift.id:
+            logging.error("Cannot delete Object record without ID.")
+            return False
+
+        with self.Session() as session:
+
+            try:
+                obj = session.get(Shift, shift.id)
+                if obj:
+                    session.delete(obj)
+                    session.commit()
+                    logging.info(f"Deleted successfully")
+                    return True
+                else:
+                    logging.warning(f"incorrect ID.")
+                    return False
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to delete Shift {shift.id}: {e}")
+                return False
+
+
+
+
+
+    #--EstimatedLabor--
+
+    def add_estimatedlabor(self,
+                            position_id: int,
+                          shift_id: int,
+                          number: int,
+                    ) -> Optional[EstimatedLabor]:
+
+        """ adding new record to db  """
+
+        if number is not None and number < 0:
+            logging.error("Total amount can not be negative")
+            return None
+
+        with self.Session() as session:
+            try:
+                exist_shift = session.get(Shift, shift_id)
+                if not exist_shift:
+                    logging.error(f"Shift {shift_id} does not exist")
+                    return None
+                exist = session.get(TargetPositionAndSalary, position_id)
+                if not exist:
+                    logging.error(f"Position  {position_id} does not exist")
+                    return None
+
+                new_one = EstimatedLabor(
+                    position_id=position_id,
+                    shift_id=shift_id,
+                    number=number,
+                )
+                session.add(new_one)
+                session.commit()
+                session.refresh(new_one)
+                logging.info("added successfully")
+                return new_one
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to add EstimatedLabor  to the database: {e}")
+                return None
+
+    def get_estimatedlabor(
+            self,
+            position_id: Optional[int]=None,
+            shift_id: Optional[int]=None,
+            row_num: Optional[int] = None,
+    ) -> list[EstimatedLabor]:
+        """Get with optional filters
+        Returns:
+            List of matching Objects (empty list if no matches or no filters provided)
+        """
+
+        with self.Session() as session:
+                try:
+                    query = session.query(EstimatedLabor).order_by(EstimatedLabor.time_create.desc())
+                    if position_id:
+                        query = query.filter_by(position_id=position_id)
+
+                    if shift_id:
+                        query = query.filter_by(shift_id=shift_id)
+
+                    if row_num:
+                        query = query.limit(row_num)
+
+                    result = query.all()
+                    logging.info(f"Found {len(result)}")
+
+                    return cast(list[EstimatedLabor], result)
+
+                except Exception as e:
+                    session.rollback()
+                    logging.error(f"Error fetching EstimatedLabor: {str(e)}")
+                    return []
+
+
+    def edit_estimatedlabor(self,
+                                     labor:EstimatedLabor
+                                     ) -> Optional[EstimatedLabor]:
+        """
+        Updates an Object in the database.
+
+        Args:
+            labor: The EstimatedLabor object with updated values.
+                         Must have valid ID.
+
+        Returns:
+        The updated EstimatedLabor  if successful, None on error.
+        """
+        if not labor.position_id or not labor.shift_id:
+            logging.error("can update object without ids")
+            return None
+
+        key = (labor.position_id, labor.shift_id)
+
+        with self.Session() as session:
+            try:
+                existing = session.get(EstimatedLabor, key)
+                if not existing:
+                    logging.error(f"EstimatedLabor {key} does not exist")
+                    return None
+
+                merged  = session.merge(labor)
+                session.commit()
+                session.refresh(merged)
+                logging.info(f"Successfully updated")
+                return merged
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to update EstimatedLabor : {e}")
+                return None
+
+    def delete_estimatedlabor(self, labor:EstimatedLabor) -> bool:
+        """
+        Deletes an Object from the database.
+        Returns True if deleted, False otherwise.
+        """
+
+        if not labor.position_id or not labor.shift_id:
+            logging.error("Cannot delete Object record without ID.")
+            return False
+        key = (labor.position_id, labor.shift_id)
+        with self.Session() as session:
+
+            try:
+                obj = session.get(EstimatedLabor, key)
+                if obj:
+                    session.delete(obj)
+                    session.commit()
+                    logging.info(f"Deleted successfully")
+                    return True
+                else:
+                    logging.warning(f"incorrect ID.")
+                    return False
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to delete EstimatedLabor {key}: {e}")
+                return False
+
+
+    #--Equipment--
+
+    def add_equipment(self,
+                      name: str,
+                      category: Optional[str] = None,
+                      number: Optional[int] = 1,
+                      purchase_date: Optional[datetime] = None,
+                      purchase_price: Optional[float] = None,
+                      payer: Optional[str] = None,
+                      in_use: bool = True,
+                      expire_date: Optional[datetime] = None,
+                      monthly_depreciation: Optional[float] = None,
+                      description: Optional[str] = None,
+                      ) -> Optional[Equipment]:
+
+        """ adding new record to db  """
+
+        if purchase_price is not None and purchase_price < 0:
+            logging.error("Total amount can not be negative")
+            return None
+
+        if monthly_depreciation is not None and monthly_depreciation < 0:
+            logging.error("Total amount can not be negative")
+            return None
+
+        if number is not None and number <= 0:
+            logging.error("Number must be greater than zero")
+            return None
+
+        name = name.lower().strip()
+
+
+        if category is not None:
+            category = category.lower().strip()
+
+        if payer is not None:
+            payer = payer.lower().strip()
+
+        with self.Session() as session:
+            try:
+
+                new_one = Equipment(
+                    name=name,
+                    number=number,
+                    category=category,
+                    purchase_date=purchase_date,
+                    purchase_price=purchase_price,
+                    payer=payer,
+                    in_use=in_use,
+                    expire_date=expire_date,
+                    monthly_depreciation=monthly_depreciation,
+                    description=description,
+                )
+                session.add(new_one)
+                session.commit()
+                session.refresh(new_one)
+                logging.info("added successfully")
+                return new_one
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to add Equipment to the database: {e}")
+                return None
+    #problem datetime time hr
+    def get_equipment(
+            self,
+            id: Optional[int] = None,
+            name: Optional[str] = None,
+            category: Optional[str] = None,
+            payer: Optional[str] = None,
+            from_date: Optional[datetime] = None,
+            to_date: Optional[datetime] = None,
+            date_expire: Optional[bool] = None,
+            in_use: Optional[bool] = None,
+            row_num: Optional[int] = None,
+    ) -> list[Equipment]:
+        """Get with optional filters
+        Returns:
+            List of matching Objects (empty list if no matches or no filters provided)
+        """
+
+        if from_date and to_date and from_date >= to_date:
+            logging.error("from_date should be less than to_date")
+            return []
+
+        if name is not None:
+            name = name.lower().strip()
+
+        if category is not None:
+            category = category.lower().strip()
+
+        if payer is not None:
+            payer = payer.lower().strip()
+
+        with self.Session() as session:
+                try:
+                    query = session.query(Equipment).order_by(Equipment.time_create.desc())
+                    if id:
+                        query = query.filter_by(id=id)
+
+                    if name:
+                        query = query.filter_by(name=name)
+
+                    if category:
+                        query = query.filter_by(category=category)
+
+                    if payer:
+                        query = query.filter_by(payer=payer)
+
+                    if date_expire:
+                        if from_date:
+                            query = query.filter(Equipment.expire_date >= from_date)
+
+                        if to_date:
+                            query = query.filter(Equipment.purchase_date <= to_date)
+                    else:
+                        if from_date:
+                            query = query.filter(Equipment.purchase_date >= from_date)
+
+                        if to_date:
+                            query = query.filter(Equipment.purchase_date <= to_date)
+
+
+                    if in_use is not None:
+                        query = query.filter_by(in_use=in_use)
+                    if row_num:
+                        query = query.limit(row_num)
+
+                    result = query.all()
+                    logging.info(f"Found {len(result)}")
+
+                    return cast(list[Equipment], result)
+
+                except Exception as e:
+                    session.rollback()
+                    logging.error(f"Error fetching Equipment: {str(e)}")
+                    return []
+
+
+    def edit_equipment(self,
+                                     equipment:Equipment
+                                     ) -> Optional[Equipment]:
+        """
+        Args:
+            equipment: The Equipment object with updated values.
+                             Must have valid ID.
+
+        Returns:
+        The updated Equipment if successful, None on error.
+        """
+        if not equipment.id:
+            logging.error("Cannot update equipment without ID")
+            return None
+
+        fields_to_process = ['name', "category", "payer"]
+        for field in fields_to_process:
+            value = getattr(equipment, field, None)
+            if isinstance(value, str):
+                setattr(equipment, field, value.strip().lower())
+
+        with self.Session() as session:
+            try:
+                merged  = session.merge(equipment)
+                session.commit()
+                session.refresh(merged)
+                logging.info(f"Successfully updated")
+                return merged
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to update equipment : {e}")
+                return None
+
+    def delete_equipment(self, equipment:Equipment) -> bool:
+        """
+        Deletes an Object from the database.
+        Returns True if deleted, False otherwise.
+        """
+
+        if not equipment.id:
+            logging.error("Cannot delete Equipment without ID")
+            return False
+
+        with self.Session() as session:
+
+            try:
+                obj = session.get(Equipment, equipment.id)
+                if obj:
+                    session.delete(obj)
+                    session.commit()
+                    logging.info(f"Deleted equipment ID: {equipment.id}")
+                    return True
+                else:
+                    logging.warning(f"Equipment with ID {equipment.id} not found")
+                    return False
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to delete Equipment {equipment.id}: {e}")
+                return False
+
 
 
 

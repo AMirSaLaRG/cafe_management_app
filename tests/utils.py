@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, time
 from typing import Dict, List, Optional, Any
 
 def crud_cycle_test(db_handler: Any,
@@ -49,7 +49,7 @@ def crud_cycle_test(db_handler: Any,
     if lookup_fields:
         for lookup_field in lookup_fields:
             #this prevents time ranges error they may not be exact value
-            if not isinstance(getattr(fetched, lookup_field), datetime):
+            if not isinstance(getattr(fetched, lookup_field), datetime) or not not isinstance(getattr(fetched, lookup_field), time):
                 value_lookup_field = getattr(fetched, lookup_field)
                 value_provided = lookup_values[lookup_fields.index(lookup_field)]
                 if isinstance(value_provided, str):
