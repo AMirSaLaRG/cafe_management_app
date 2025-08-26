@@ -402,6 +402,9 @@ class Bills(Base):
     payer = Column(String)
     description=Column(String)
 
+    time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
 #_____________personal worked shifts and payment record_______________________
 
 
@@ -411,7 +414,7 @@ class Personal(Base):
     id = Column(Integer, primary_key=True)
     first_name = Column(String(250))
     last_name = Column(String(250))
-    nationality_code = Column(String(20))
+    nationality_code = Column(String(20), unique=True)
     email= Column(String(250))
     phone =  Column(String(30))
     address = Column(String(300))
@@ -419,6 +422,9 @@ class Personal(Base):
     position = Column(String(250))
     active = Column(Boolean)
     description = Column(String(300))
+
+    time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
 
     payments = relationship("RecordEmployeePayment", back_populates="personal")
     shift_record = relationship("WorkShiftRecord", back_populates="personal")
@@ -436,6 +442,9 @@ class WorkShiftRecord(Base):
     extra_payed = Column(Float)
     description = Column(String(500))
 
+    time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
     shift = relationship("Shift", back_populates="shift_record")
     personal = relationship("Personal", back_populates="shift_record")
 
@@ -452,6 +461,9 @@ class RecordEmployeePayment(Base):
     work_hr = Column(Float)
     extra_hr = Column(Float)
     extra_expenses = Column(Float)
+
+    time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
 
     personal = relationship("Personal", back_populates="payments")
 

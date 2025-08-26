@@ -3600,7 +3600,7 @@ class DbHandler:
                       name: str,
                       rent: Optional[float] = None,
                       mortgage: Optional[float] = None,
-                      mortgage_percentage_to_rent: Optional[float] = 1,
+                      mortgage_percentage_to_rent: Optional[float] = None,
                       from_date: Optional[datetime] = None,
                       to_date: Optional[datetime] = None,
                       payer: Optional[str] = None,
@@ -3762,6 +3762,201 @@ class DbHandler:
             except Exception as e:
                 session.rollback()
                 logging.error(f"Failed to delete rent {rent.id}: {e}")
+                return False
+
+
+
+
+    #--Personal--
+
+    def add_personal(self,
+                      first_name: Optional[str] = None,
+                      last_name: Optional[str] = None,
+                      nationality_code: Optional[str] = None,
+                      email: Optional[str] = None,
+                      phone: Optional[str] = None,
+                      address: Optional[str] = None,
+                      hire_date: Optional[datetime] = None,
+                      position: Optional[str] = None,
+                      active: Optional[bool] = None,
+                      description: Optional[str] = None,
+                      ) -> Optional[Personal]:
+
+        """ adding new record to db  """
+
+        if first_name is not None:
+            first_name = first_name.lower().strip()
+
+        if last_name is not None:
+            last_name = last_name.lower().strip()
+
+        if position is not None:
+            position = position.lower().strip()
+
+        if nationality_code is not None:
+            nationality_code = nationality_code.lower().strip()
+
+        with self.Session() as session:
+            try:
+
+                new_one = Personal(
+                    first_name=first_name,
+                    last_name=last_name,
+                    nationality_code=nationality_code,
+                    email=email,
+                    phone=phone,
+                    address=address,
+                    hire_date=hire_date,
+                    position=position,
+                    active=active,
+                    description=description,
+                )
+                session.add(new_one)
+                session.commit()
+                session.refresh(new_one)
+                logging.info("added successfully")
+                return new_one
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to add personal to the database: {e}")
+                return None
+
+    def get_personal(
+            self,
+            id: Optional[int] = None,
+            first_name: Optional[str] = None,
+            last_name: Optional[str] = None,
+            nationality_code: Optional[str] = None,
+            position: Optional[str] = None,
+            from_date: Optional[datetime] = None,
+            to_date: Optional[datetime] = None,
+            active: Optional[bool] = None,
+            row_num: Optional[int] = None,
+    ) -> list[Personal]:
+        """Get with optional filters
+        Returns:
+            List of matching Objects (empty list if no matches or no filters provided)
+        """
+
+        if from_date and to_date and from_date >= to_date:
+            logging.error("from_date should be less than to_date")
+            return []
+
+        if first_name is not None:
+            first_name = first_name.lower().strip()
+
+        if last_name is not None:
+            last_name = last_name.lower().strip()
+
+        if position is not None:
+            position = position.lower().strip()
+
+        if nationality_code is not None:
+            nationality_code = nationality_code.lower().strip()
+
+        with self.Session() as session:
+                try:
+                    query = session.query(Personal).order_by(Personal.time_create.desc())
+                    if id:
+                        query = query.filter_by(id=id)
+
+
+                    if first_name:
+                        query = query.filter_by(first_name=first_name)
+
+                    if last_name:
+                        query = query.filter_by(last_name=last_name)
+
+                    if position:
+                        query = query.filter_by(position=position)
+
+                    if nationality_code:
+                        query = query.filter_by(nationality_code=nationality_code)
+
+                    if active is not None:
+                        query = query.filter_by(active=active)
+
+                    if from_date:
+                        query = query.filter(Personal.hire_date >= from_date)
+
+                    if to_date:
+                        query = query.filter(Personal.hire_date <= to_date)
+
+                    if row_num:
+                        query = query.limit(row_num)
+
+                    result = query.all()
+                    logging.info(f"Found {len(result)}")
+
+                    return cast(list[Personal], result)
+
+                except Exception as e:
+                    session.rollback()
+                    logging.error(f"Error fetching Personal: {str(e)}")
+                    return []
+
+
+    def edit_personal(self,
+                                     personal:Personal
+                                     ) -> Optional[Personal]:
+        """
+        Args:
+            personal: The personal object with updated values.
+
+        Returns:
+        The updated Personal if successful, None on error.
+        """
+        if not personal.id:
+            logging.error("Cannot update personal without ID")
+            return None
+
+        fields_to_process = ["first_name", "last_name", "position", "nationality_code"]
+        for field in fields_to_process:
+            value = getattr(personal, field, None)
+            if isinstance(value, str):
+                setattr(personal, field, value.strip().lower())
+
+        with self.Session() as session:
+            try:
+                existing = session.get(Personal, personal.id)
+                if not existing:
+                    logging.error(f"No personal found with ID: {personal.id}")
+                    return None
+                merged  = session.merge(personal)
+                session.commit()
+                session.refresh(merged)
+                logging.info(f"Successfully updated")
+                return merged
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to update personal : {e}")
+                return None
+
+    def delete_personal(self, personal:Personal) -> bool:
+        """
+        Deletes an Object from the database.
+        Returns True if deleted, False otherwise.
+        """
+
+        if not personal.id:
+            logging.error("Cannot delete personal without ID")
+            return False
+
+        with self.Session() as session:
+
+            try:
+                obj = session.get(Personal, personal.id)
+                if obj:
+                    session.delete(obj)
+                    session.commit()
+                    logging.info(f"Deleted personal ID: {personal.id}")
+                    return True
+                else:
+                    logging.warning(f"personal with ID {personal.id} not found")
+                    return False
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to delete personal {personal.id}: {e}")
                 return False
 
 
