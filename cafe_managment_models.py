@@ -377,6 +377,7 @@ class Rent(Base):
     __tablename__ = "rent"
 
     id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
     rent = Column(Float)
     mortgage = Column(Float)
     mortgage_percentage_to_rent = Column(Float)
@@ -384,6 +385,8 @@ class Rent(Base):
     to_date = Column(DateTime)
     payer = Column(String)
     description = Column(String(500))
+
+    time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 #_____________ THIS TABLES HELP RECORD AND SEE WHAT REALITY LOOKS LIKE _________________________
 

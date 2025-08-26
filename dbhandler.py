@@ -3594,6 +3594,178 @@ class DbHandler:
 
 
 
+    #--Rent--
+
+    def add_rent(self,
+                      name: str,
+                      rent: Optional[float] = None,
+                      mortgage: Optional[float] = None,
+                      mortgage_percentage_to_rent: Optional[float] = 1,
+                      from_date: Optional[datetime] = None,
+                      to_date: Optional[datetime] = None,
+                      payer: Optional[str] = None,
+                      description: Optional[str] = None,
+                      ) -> Optional[Rent]:
+
+        """ adding new record to db  """
+
+        if rent is not None and rent < 0:
+            logging.error("Total amount can not be negative")
+            return None
+
+        if mortgage is not None and mortgage < 0:
+            logging.error("Total amount can not be negative")
+            return None
+
+        if mortgage_percentage_to_rent is not None and not 0<= mortgage_percentage_to_rent <= 1:
+            logging.error("Number must be between 0 and 1")
+            return None
+
+        name = name.lower().strip()
+
+        if payer is not None:
+            payer = payer.lower().strip()
+
+        with self.Session() as session:
+            try:
+
+                new_one = Rent(
+                    name=name,
+                    rent=rent,
+                    mortgage=mortgage,
+                    mortgage_percentage_to_rent=mortgage_percentage_to_rent,
+                    from_date=from_date,
+                    to_date=to_date,
+                    payer=payer,
+                    description=description,
+                )
+                session.add(new_one)
+                session.commit()
+                session.refresh(new_one)
+                logging.info("added successfully")
+                return new_one
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to add Rent to the database: {e}")
+                return None
+
+    def get_rent(
+            self,
+            id: Optional[int] = None,
+            name: Optional[str] = None,
+            payer: Optional[str] = None,
+            from_date: Optional[datetime] = None,
+            to_date: Optional[datetime] = None,
+            row_num: Optional[int] = None,
+    ) -> list[Rent]:
+        """Get with optional filters
+        Returns:
+            List of matching Objects (empty list if no matches or no filters provided)
+        """
+
+        if from_date and to_date and from_date >= to_date:
+            logging.error("from_date should be less than to_date")
+            return []
+
+        if payer is not None:
+            payer = payer.lower().strip()
+        if name is not None:
+            name = name.lower().strip()
+
+        with self.Session() as session:
+                try:
+                    query = session.query(Rent).order_by(Rent.time_create.desc())
+                    if id:
+                        query = query.filter_by(id=id)
+
+
+                    if name:
+                        query = query.filter_by(name=name)
+
+                    if payer:
+                        query = query.filter_by(payer=payer)
+
+                    if from_date:
+                        query = query.filter(Rent.from_date >= from_date)
+
+                    if to_date:
+                        query = query.filter(Rent.from_date <= to_date)
+
+                    if row_num:
+                        query = query.limit(row_num)
+
+                    result = query.all()
+                    logging.info(f"Found {len(result)}")
+
+                    return cast(list[Rent], result)
+
+                except Exception as e:
+                    session.rollback()
+                    logging.error(f"Error fetching Rent: {str(e)}")
+                    return []
+
+
+    def edit_rent(self,
+                                     rent:Rent
+                                     ) -> Optional[Rent]:
+        """
+        Args:
+            rent: The Rent object with updated values.
+
+        Returns:
+        The updated Rent if successful, None on error.
+        """
+        if not rent.id:
+            logging.error("Cannot update rent without ID")
+            return None
+
+        fields_to_process = ["name", "payer"]
+        for field in fields_to_process:
+            value = getattr(rent, field, None)
+            if isinstance(value, str):
+                setattr(rent, field, value.strip().lower())
+
+        with self.Session() as session:
+            try:
+                merged  = session.merge(rent)
+                session.commit()
+                session.refresh(merged)
+                logging.info(f"Successfully updated")
+                return merged
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to update rent : {e}")
+                return None
+
+    def delete_rent(self, rent:Rent) -> bool:
+        """
+        Deletes an Object from the database.
+        Returns True if deleted, False otherwise.
+        """
+
+        if not rent.id:
+            logging.error("Cannot delete rent without ID")
+            return False
+
+        with self.Session() as session:
+
+            try:
+                obj = session.get(Rent, rent.id)
+                if obj:
+                    session.delete(obj)
+                    session.commit()
+                    logging.info(f"Deleted rent ID: {rent.id}")
+                    return True
+                else:
+                    logging.warning(f"rent with ID {rent.id} not found")
+                    return False
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to delete rent {rent.id}: {e}")
+                return False
+
+
+
 
 
 db = DbHandler()
