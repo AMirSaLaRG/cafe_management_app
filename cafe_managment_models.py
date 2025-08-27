@@ -25,20 +25,18 @@ class Inventory(Base):
     recipes = relationship("Recipe", back_populates="inventory_item")
     supply_record = relationship("SupplyRecord", back_populates="inventory_item")
     usage_records = relationship("InventoryUsage", back_populates="inventory_item")
-    records = relationship("InventoryRecord", back_populates="inventory_item")
+    records = relationship("InventoryStockRecord", back_populates="inventory_item")
 
 #done
-class InventoryRecord(Base):
+class InventoryStockRecord(Base):
     __tablename__ = "inventory_record"
 
     id = Column(Integer, primary_key=True)
     inventory_id = Column(ForeignKey('inventory.id'))
-    sold_amount = Column(Float)
-    other_used_amount = Column(Float)
-    supplied_amount = Column(Float)
+    date = Column(TIMESTAMP)
+    change_amount = Column(Float)
     auto_calculated_amount = Column(Float)
     manual_report = Column(Float)
-    date = Column(TIMESTAMP)
     description = Column(String(500))
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
@@ -469,4 +467,4 @@ class RecordEmployeePayment(Base):
 
 
 
-# render_er(Base, 'erd_from_sqlalchemy.png')
+render_er(Base, 'erd_from_sqlalchemy.png')

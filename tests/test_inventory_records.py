@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import random
 
 from tests.utils import crud_cycle_test
-from cafe_managment_models import InventoryRecord
+from cafe_managment_models import InventoryStockRecord
 
 def test_inventory_records_curd_cycle(in_memory_db):
     """Test full CRUD cycle for Menu using  exact utility function"""
@@ -16,12 +16,10 @@ def test_inventory_records_curd_cycle(in_memory_db):
     assert inventory_item is not None
     crud_cycle_test(
         db_handler=in_memory_db,
-        model_class=InventoryRecord,
+        model_class=InventoryStockRecord,
         create_kwargs={
             "inventory_id": inventory_item.id,
-            "sold_amount": 101.1,
-            "other_used_amount": 10.9,
-            "supplied_amount": 250,
+            "change_amount": -101.1,
             "auto_calculated_amount":130,
             "manual_report":100,
             "date":datetime.now(),
@@ -39,7 +37,7 @@ def test_inventory_records_curd_cycle(in_memory_db):
 
     )
 
-def test_inventoryrecord_crud_cycle(in_memory_db):
+def test_inventorystockrecord_crud_cycle(in_memory_db):
     """Test happy path using crud_cycle_test"""
     inventory_item = in_memory_db.add_inventory(
         name="Test Item",
@@ -50,14 +48,14 @@ def test_inventoryrecord_crud_cycle(in_memory_db):
     assert inventory_item is not None
     crud_cycle_test(
         db_handler=in_memory_db,
-        model_class=InventoryRecord,
+        model_class=InventoryStockRecord,
         create_kwargs={
             "inventory_id": 1,
-            "sold_amount": 10.5,
+            "change_amount": -10.5,
             "description": "Initial record"
         },
         update_kwargs={
-            "sold_amount": 15.2,
+            "change_amount": -15.2,
             "description": "Updated record"
         },
         lookup_fields=['inventory_id'],
@@ -80,9 +78,9 @@ def test_inventory_records_date_range_filtering(in_memory_db):
     base_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=15)
     for i in range(10):
         record_date = base_date + timedelta(days=i*3)
-        in_memory_db.add_inventoryrecord(
+        in_memory_db.add_inventorystockrecord(
             inventory_id=inventory_item.id,
-            sold_amount=10 + i*5,
+            change_amount=-10 + i*5,
             date=record_date,
             description=f"Test record {i+1}"
         )
@@ -92,7 +90,7 @@ def test_inventory_records_date_range_filtering(in_memory_db):
     to_date = base_date + timedelta(days=18)  # Changed from 21 to 18 to get exactly 4 records
 
     # Get records in date range
-    records = in_memory_db.get_inventoryrecord(
+    records = in_memory_db.get_inventorystockrecord(
         inventory_id=inventory_item.id,
         from_date=from_date,
         to_date=to_date
@@ -131,9 +129,9 @@ def test_inventory_records_get_all_with_date_range(in_memory_db):
     test_records = []
     for i in range(10):  # Days 0, 3, 6, 9, 12, 15, 18, 21, 24, 27
         record_date = base_date + timedelta(days=i * 3)
-        record = in_memory_db.add_inventoryrecord(
+        record = in_memory_db.add_inventorystockrecord(
             inventory_id=inventory_item.id,
-            sold_amount=10 + i * 5,
+            change_amount=10 + i * 5,
             date=record_date,
             description=f"Record day {i * 3}"
         )
@@ -144,7 +142,7 @@ def test_inventory_records_get_all_with_date_range(in_memory_db):
     to_date = base_date + timedelta(days=18)
 
     # Test last=False with date range
-    records = in_memory_db.get_inventoryrecord(
+    records = in_memory_db.get_inventorystockrecord(
         inventory_id=inventory_item.id,
         from_date=from_date,
         to_date=to_date
@@ -190,16 +188,16 @@ def test_inventory_records_get_all_records(in_memory_db):
     test_records = []
     for i in range(10):  # Days 0, 3, 6, 9, 12, 15, 18, 21, 24, 27
         record_date = base_date + timedelta(days=i * 3)
-        record = in_memory_db.add_inventoryrecord(
+        record = in_memory_db.add_inventorystockrecord(
             inventory_id=inventory_item.id,
-            sold_amount=10 + i * 5,
+            change_amount=10 + i * 5,
             date=record_date,
             description=f"Record day {i * 3}"
         )
         test_records.append(record)
 
     # Test last=False without date range
-    records = in_memory_db.get_inventoryrecord(
+    records = in_memory_db.get_inventorystockrecord(
         inventory_id=inventory_item.id,
     )
 

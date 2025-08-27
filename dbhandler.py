@@ -326,30 +326,17 @@ class DbHandler:
                 return False
 
 
-    #--inventory record--
-    def add_inventoryrecord(self,
+    #--InventoryStockRecord--
+    def add_inventorystockrecord(self,
                  inventory_id:int,
-                 sold_amount:Optional[float]=None,
-                 other_used_amount:Optional[float]=None,
-                 supplied_amount:Optional[float]=None,
+                 change_amount:float,
                  auto_calculated_amount:Optional[float]=None,
                  manual_report:Optional[float]=None,
                  date:datetime=None,
                  description:Optional[str]=None,
-                 ) -> Optional[InventoryRecord]:
+                 ) -> Optional[InventoryStockRecord]:
         """ adding new inventory record item """
-        if sold_amount is not None and sold_amount < 0:
-            logging.error("sold_amount: value cant be negative")
-            return None
-        if other_used_amount is not None and other_used_amount < 0:
-            logging.error("other_used_amount: value cant be negative")
-            return None
-        if supplied_amount is not None and supplied_amount < 0:
-            logging.error("supplied_amount: value cant be negative")
-            return None
-        if auto_calculated_amount is not None and auto_calculated_amount < 0:
-            logging.error("auto_calculated_amount: value cant be negative")
-            return None
+
         if manual_report is not None and manual_report < 0:
             logging.error("manual_report: value cant be negative")
             return None
@@ -363,11 +350,9 @@ class DbHandler:
 
                 date = date if date is not None else datetime.now()
 
-                new_record = InventoryRecord(
+                new_record = InventoryStockRecord(
                     inventory_id=inventory_id,
-                    sold_amount=sold_amount,
-                    other_used_amount=other_used_amount,
-                    supplied_amount=supplied_amount,
+                    change_amount=change_amount,
                     auto_calculated_amount=auto_calculated_amount,
                     manual_report=manual_report,
                     date=date,
@@ -383,14 +368,14 @@ class DbHandler:
                 logging.error(f"Failed to add inventory record item to the database: {e}")
                 return None
 
-    def get_inventoryrecord(
+    def get_inventorystockrecord(
             self,
             id:Optional[int]=None,
             inventory_id: Optional[int]=None,
             from_date: Optional[datetime] = None,
             to_date: Optional[datetime] = None,
             row_num: Optional[int]=None,
-    ) ->List[InventoryRecord]:
+    ) ->List[InventoryStockRecord]:
         """Get inventory record(s) for inventory items
 
         Args:
@@ -406,38 +391,38 @@ class DbHandler:
 
         with (self.Session() as session):
             try:
-                query = session.query(InventoryRecord).order_by(InventoryRecord.date.desc())
+                query = session.query(InventoryStockRecord).order_by(InventoryStockRecord.date.desc())
 
                 if id:
                     query = query.filter_by(id=id)
                 if inventory_id:
                     query = query.filter_by(inventory_id=inventory_id)
                 if from_date:
-                    query = query.filter(InventoryRecord.date >= from_date)
+                    query = query.filter(InventoryStockRecord.date >= from_date)
                 if to_date:
-                    query = query.filter(InventoryRecord.date <= to_date)
+                    query = query.filter(InventoryStockRecord.date <= to_date)
                 if row_num:
                     query = query.limit(row_num)
 
                 result = query.all()
                 logging.info(f"Found {len(result)} inventory records")
-                return cast(List[InventoryRecord], result)
+                return cast(List[InventoryStockRecord], result)
 
             except Exception as e:
                 session.rollback()
                 logging.error(f"Error fetching records for inventory: {str(e)}")
                 return []
 
-    def edit_inventoryrecord(self, inventory_record:InventoryRecord) -> Optional[InventoryRecord]:
+    def edit_inventorystockrecord(self, inventory_record:InventoryStockRecord) -> Optional[InventoryStockRecord]:
         """
         Updates an existing inventory record in the database.
 
         Args:
-            inventory_record: The InventoryRecord object with updated values.
+            inventory_record: The inventorystockrecord object with updated values.
                              Must have a valid ID for existing records.
 
         Returns:
-            The updated InventoryRecord if successful, None on error.
+            The updated inventorystockrecord if successful, None on error.
         """
 
 
@@ -446,7 +431,7 @@ class DbHandler:
             return None
         with self.Session() as session:
             try:
-                existing = session.get(InventoryRecord, inventory_record.id)
+                existing = session.get(InventoryStockRecord, inventory_record.id)
                 if not existing:
                     logging.error(f"No inventory record found with ID: {inventory_record.id}")
                     return None
@@ -460,14 +445,14 @@ class DbHandler:
                 logging.error(f"Failed to update inventory record with id: {inventory_record.id}: {e}")
                 return None
 
-    def delete_inventoryrecord(self, inventory_record: InventoryRecord) -> bool:
+    def delete_inventorystockrecord(self, inventory_record: InventoryStockRecord) -> bool:
         """
         Deletes an inventory record by ID.
         Returns True if deleted, False otherwise.
         """
         with self.Session() as session:
             try:
-                record = session.get(InventoryRecord, inventory_record.id)
+                record = session.get(InventoryStockRecord, inventory_record.id)
                 if not record:
                     logging.warning(f"No inventory record found with id: {inventory_record.id}")
                     return False
