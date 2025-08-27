@@ -460,6 +460,7 @@ class RecordEmployeePayment(Base):
     work_hr = Column(Float)
     extra_hr = Column(Float)
     extra_expenses = Column(Float)
+    description = Column(String)
 
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 

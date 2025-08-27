@@ -4174,5 +4174,204 @@ class DbHandler:
 
 
 
+    #--RecordEmployeePayment--
+
+    def add_recordemployeepayment(self,
+                      personal_id: int,
+                      from_date: Optional[datetime] = None,
+                      to_date: Optional[datetime] = None,
+                      payment: Optional[float] = None,
+                      insurance: Optional[float] = None,
+                      work_hr: Optional[float] = None,
+                      extra_hr: Optional[float] = None,
+                      extra_expenses: Optional[float] = None,
+                      description: Optional[str] = None,
+                      ) -> Optional[RecordEmployeePayment]:
+
+        """ adding new record to db  """
+
+        if work_hr is not None and work_hr < 0:
+            logging.error('Value cannot be negative')
+            return None
+
+        if extra_hr is not None and extra_hr < 0:
+            logging.error('Value cannot be negative')
+            return None
+
+        if payment is not None and payment < 0:
+            logging.error('Value cannot be negative')
+            return None
+
+        if insurance is not None and insurance < 0:
+            logging.error('Value cannot be negative')
+            return None
+
+        if extra_expenses is not None and extra_expenses < 0:
+            logging.error('Value cannot be negative')
+            return None
+
+        if from_date and to_date and from_date > to_date:
+            logging.error("start date can not be later than end date")
+            return None
+
+
+        with self.Session() as session:
+            try:
+                existence = session.get(Personal, personal_id)
+                if not existence:
+                    logging.error("This personal id does not exist")
+                    return None
+
+                over_lap = session.query(RecordEmployeePayment).filter(
+                    RecordEmployeePayment.personal_id == personal_id,
+                    RecordEmployeePayment.from_date < to_date,
+                    RecordEmployeePayment.to_date > from_date
+                ).first()
+                if over_lap:
+                    logging.error("this time overlaps with other record of this person")
+                    return None
+
+                new_one = RecordEmployeePayment(
+                    personal_id=personal_id,
+                    from_date=from_date,
+                    to_date=to_date,
+                    payment=payment ,
+                    insurance=insurance ,
+                    work_hr=work_hr ,
+                    extra_hr=extra_hr ,
+                    extra_expenses=extra_expenses,
+                    description=description,
+
+                )
+                session.add(new_one)
+                session.commit()
+                session.refresh(new_one)
+                logging.info("added successfully")
+                return new_one
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to add RecordEmployeePayment to the database: {e}")
+                return None
+
+    def get_recordemployeepayment(
+            self,
+            id: Optional[int] = None,
+            personal_id: Optional[int] = None,
+            from_date: Optional[datetime] = None,
+            to_date: Optional[datetime] = None,
+            row_num: Optional[int] = None,
+    ) -> list[RecordEmployeePayment]:
+        """Get with optional filters
+        Returns:
+            List of matching Objects (empty list if no matches or no filters provided)
+        """
+
+        if from_date and to_date and from_date >= to_date:
+            logging.error("from_date should be less than to_date")
+            return []
+
+        with self.Session() as session:
+                try:
+                    query = session.query(RecordEmployeePayment).order_by(RecordEmployeePayment.time_create.desc())
+                    if id:
+                        query = query.filter_by(id=id)
+                    if personal_id:
+                        query = query.filter_by(personal_id=personal_id)
+
+                    if from_date:
+                        query = query.filter(RecordEmployeePayment.from_date >= from_date)
+
+                    if to_date:
+                        query = query.filter(RecordEmployeePayment.from_date <= to_date)
+
+                    if row_num:
+                        query = query.limit(row_num)
+
+                    result = query.all()
+                    logging.info(f"Found {len(result)}")
+
+                    return cast(list[RecordEmployeePayment], result)
+
+                except Exception as e:
+                    session.rollback()
+                    logging.error(f"Error fetching RecordEmployeePayment: {str(e)}")
+                    return []
+
+
+    def edit_recordemployeepayment(self,
+                                     record_employee_payment:RecordEmployeePayment
+                                     ) -> Optional[RecordEmployeePayment]:
+        """
+        Args:
+            record_employee_payment: The personal object with updated values.
+
+        Returns:
+        The updated RecordEmployeePayment if successful, None on error.
+        """
+        if not record_employee_payment.id:
+            logging.error("Cannot update record_employee_payment without ID")
+            return None
+
+        # fields_to_process = ["first_name", "last_name", "position", "nationality_code"]
+        # for field in fields_to_process:
+        #     value = getattr(working_shift_record, field, None)
+        #     if isinstance(value, str):
+        #         setattr(working_shift_record, field, value.strip().lower())
+
+        with self.Session() as session:
+            try:
+                existing = session.get(RecordEmployeePayment, record_employee_payment.id)
+                if not existing:
+                    logging.error(f"No record_employee_payment found with ID: {record_employee_payment.id}")
+                    return None
+                over_lap = session.query(RecordEmployeePayment).filter(
+                    RecordEmployeePayment.id != record_employee_payment.id,
+                    RecordEmployeePayment.personal_id == record_employee_payment.personal_id,
+                    RecordEmployeePayment.from_date < record_employee_payment.to_date,
+                    RecordEmployeePayment.to_date > record_employee_payment.from_date
+                ).first()
+                if over_lap:
+                    logging.error("this time overlaps with other record of this person")
+                    return None
+                merged  = session.merge(record_employee_payment)
+                session.commit()
+                session.refresh(merged)
+                logging.info(f"Successfully updated")
+                return merged
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to update RecordEmployeePayment : {e}")
+                return None
+
+    def delete_recordemployeepayment(self, record_employee_payment:RecordEmployeePayment) -> bool:
+        """
+        Deletes a WorkShiftRecord from the database.
+        Returns True if deleted, False otherwise.
+        """
+
+        if not record_employee_payment.id:
+            logging.error("Cannot delete RecordEmployeePayment without ID")
+            return False
+
+        with self.Session() as session:
+
+            try:
+                obj = session.get(RecordEmployeePayment, record_employee_payment.id)
+                if obj:
+                    session.delete(obj)
+                    session.commit()
+                    logging.info(f"Deleted record_employee_payment ID: {record_employee_payment.id}")
+                    return True
+                else:
+                    logging.warning(f"record_employee_payment with ID {record_employee_payment.id} not found")
+                    return False
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to delete record_employee_payment {record_employee_payment.id}: {e}")
+                return False
+
+
+
+
 
 db = DbHandler()
