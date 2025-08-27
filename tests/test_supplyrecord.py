@@ -1,7 +1,7 @@
 import pytest
 from datetime import datetime
-from dbhandler import DbHandler
-from cafe_managment_models import SupplyRecord, Inventory, Ship, Order, Supplier
+from models.dbhandler import DbHandler
+from models.cafe_managment_models import SupplyRecord
 from utils import crud_cycle_test
 
 

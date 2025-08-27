@@ -1,6 +1,5 @@
-import pytest
 from datetime import datetime, time
-from cafe_managment_models import Shift
+from models.cafe_managment_models import Shift
 from utils import crud_cycle_test
 
 

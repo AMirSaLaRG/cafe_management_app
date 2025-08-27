@@ -1,6 +1,5 @@
-import pytest
 from datetime import datetime, time
-from cafe_managment_models import EstimatedLabor, Shift, TargetPositionAndSalary
+from models.cafe_managment_models import EstimatedLabor
 from utils import crud_cycle_test
 
 

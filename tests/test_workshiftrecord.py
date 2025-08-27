@@ -1,6 +1,6 @@
 import pytest
 from datetime import datetime, time, timedelta
-from cafe_managment_models import Personal, WorkShiftRecord
+from models.cafe_managment_models import Personal, WorkShiftRecord
 from utils import crud_cycle_test
 
 def test_crud_cycle_personal(in_memory_db):

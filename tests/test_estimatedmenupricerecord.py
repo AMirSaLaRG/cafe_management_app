@@ -1,8 +1,7 @@
-import logging
 from datetime import datetime, timedelta
 
 from tests.utils import crud_cycle_test
-from cafe_managment_models import EstimatedMenuPriceRecord, Menu
+from models.cafe_managment_models import EstimatedMenuPriceRecord
 
 
 def test_estimatedmenupricerecord_crud_cycle(in_memory_db):

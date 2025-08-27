@@ -1,5 +1,5 @@
 from tests.utils import crud_cycle_test
-from cafe_managment_models import Menu
+from models.cafe_managment_models import Menu
 
 def test_menu_crud_cycle(in_memory_db):
     """Test full CRUD cycle for Menu using  exact utility function"""

@@ -1,7 +1,6 @@
-import pytest
 from datetime import datetime, timedelta
 from typing import Dict, Any
-from cafe_managment_models import Order, Supplier
+from models.cafe_managment_models import Order
 from tests.utils import crud_cycle_test
 
 

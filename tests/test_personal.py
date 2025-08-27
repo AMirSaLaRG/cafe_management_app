@@ -1,7 +1,7 @@
 import pytest
 from datetime import datetime
-from dbhandler import DbHandler
-from cafe_managment_models import Personal
+from models.dbhandler import DbHandler
+from models.cafe_managment_models import Personal
 from utils import crud_cycle_test
 
 @pytest.fixture(scope="module")

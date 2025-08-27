@@ -1,7 +1,6 @@
-import pytest
-from cafe_managment_models import *
+from models.cafe_managment_models import *
 from tests.utils import crud_cycle_test
-from datetime import datetime, timedelta
+from datetime import datetime
 
 
 def test_targetpositionandsalary_basic_crud(in_memory_db):

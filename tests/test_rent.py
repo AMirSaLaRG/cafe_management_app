@@ -1,6 +1,5 @@
-import pytest
 from datetime import datetime
-from cafe_managment_models import Rent
+from models.cafe_managment_models import Rent
 
 
 def test_rent_crud_cycle(in_memory_db):

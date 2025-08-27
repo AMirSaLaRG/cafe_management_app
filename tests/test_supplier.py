@@ -1,6 +1,6 @@
 
 
-from cafe_managment_models import Supplier
+from models.cafe_managment_models import Supplier
 from tests.utils import crud_cycle_test
 
 

@@ -15,8 +15,7 @@ class Inventory(Base):
     current_stock = Column(Float)  # Auto-updated by system
     category = Column(String(255))
     price_per_unit = Column(Float)
-    initial_value = Column(Float)
-    date_of_initial_value = Column(DateTime)
+
 
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
@@ -33,6 +32,7 @@ class InventoryStockRecord(Base):
 
     id = Column(Integer, primary_key=True)
     inventory_id = Column(ForeignKey('inventory.id'))
+    category = Column(String)
     date = Column(TIMESTAMP)
     change_amount = Column(Float)
     auto_calculated_amount = Column(Float)

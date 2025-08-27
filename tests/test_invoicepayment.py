@@ -1,6 +1,5 @@
-import pytest
 from datetime import datetime, timedelta
-from cafe_managment_models import InvoicePayment
+from models.cafe_managment_models import InvoicePayment
 from utils import crud_cycle_test
 
 

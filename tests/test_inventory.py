@@ -1,4 +1,4 @@
-from cafe_managment_models import Inventory
+from models.cafe_managment_models import Inventory
 from tests.utils import crud_cycle_test
 
 

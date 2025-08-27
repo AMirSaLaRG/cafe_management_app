@@ -1,8 +1,8 @@
 import pytest
-from datetime import datetime, time, timedelta
-from typing import Dict, Any, Optional
-from dbhandler import DbHandler
-from cafe_managment_models import RecordEmployeePayment, Personal
+from datetime import datetime
+from typing import Dict, Any
+from models.dbhandler import DbHandler
+from models.cafe_managment_models import RecordEmployeePayment, Personal
 from utils import crud_cycle_test
 
 

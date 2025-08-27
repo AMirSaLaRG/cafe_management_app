@@ -1,6 +1,5 @@
 import pytest
-from datetime import datetime
-from cafe_managment_models import InventoryUsage, Inventory, Usage
+from models.cafe_managment_models import InventoryUsage
 from utils import crud_cycle_test
 
 

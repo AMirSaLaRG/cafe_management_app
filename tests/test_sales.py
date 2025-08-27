@@ -1,6 +1,6 @@
 import pytest
-from datetime import datetime, timedelta
-from cafe_managment_models import Sales, Menu, Invoice, InvoicePayment
+from datetime import datetime
+from models.cafe_managment_models import Sales
 from utils import crud_cycle_test
 
 

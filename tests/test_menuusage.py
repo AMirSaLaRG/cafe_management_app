@@ -1,6 +1,5 @@
 import pytest
-from datetime import datetime
-from cafe_managment_models import MenuUsage, Menu, Usage
+from models.cafe_managment_models import MenuUsage
 from utils import crud_cycle_test
 
 @pytest.fixture

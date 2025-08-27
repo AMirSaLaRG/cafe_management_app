@@ -6,8 +6,8 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))  # Add project root to Python path
 
-from cafe_managment_models import Base
-from dbhandler import DbHandler
+from models.cafe_managment_models import Base
+from models.dbhandler import DbHandler
 
 
 @pytest.fixture(scope='function')

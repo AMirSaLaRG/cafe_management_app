@@ -1,10 +1,10 @@
-from typing import Optional, List, Tuple, Union, cast
+from typing import Optional, List, cast
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime, time
+from datetime import time
 import logging
-from cafe_managment_models import *
+from models.cafe_managment_models import *
 
 logging.basicConfig(filename='app.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -33,8 +33,7 @@ class DbHandler:
                       unit:Optional[str]=None,
                       current_stock:Optional[float]=None,
                       price_per_unit:Optional[float]=None,
-                      initial_value:Optional[float]=None,
-                      date_of_initial_value:Optional[datetime]=None):
+                      ):
 
         if name:
             name = name.lower().strip()
@@ -52,8 +51,7 @@ class DbHandler:
                     category=category,
                     current_stock=current_stock,
                     price_per_unit=price_per_unit,
-                    initial_value=initial_value,
-                    date_of_initial_value=date_of_initial_value
+
                 )
                 session.add(new_item)
                 session.commit()
@@ -330,6 +328,7 @@ class DbHandler:
     def add_inventorystockrecord(self,
                  inventory_id:int,
                  change_amount:float,
+                 category:str = None,
                  auto_calculated_amount:Optional[float]=None,
                  manual_report:Optional[float]=None,
                  date:datetime=None,
@@ -340,6 +339,9 @@ class DbHandler:
         if manual_report is not None and manual_report < 0:
             logging.error("manual_report: value cant be negative")
             return None
+
+        if category is not None:
+            category = category.strip().lower()
 
         with self.Session() as session:
             try:
@@ -352,6 +354,7 @@ class DbHandler:
 
                 new_record = InventoryStockRecord(
                     inventory_id=inventory_id,
+                    category=category,
                     change_amount=change_amount,
                     auto_calculated_amount=auto_calculated_amount,
                     manual_report=manual_report,
@@ -372,6 +375,7 @@ class DbHandler:
             self,
             id:Optional[int]=None,
             inventory_id: Optional[int]=None,
+            category: Optional[str]=None,
             from_date: Optional[datetime] = None,
             to_date: Optional[datetime] = None,
             row_num: Optional[int]=None,
@@ -388,7 +392,8 @@ class DbHandler:
         Returns:
             List of InventoryRecord objects (empty list if no matches found or error occurs)
         """
-
+        if category is not None:
+            category = category.strip().lower()
         with (self.Session() as session):
             try:
                 query = session.query(InventoryStockRecord).order_by(InventoryStockRecord.date.desc())
@@ -397,6 +402,8 @@ class DbHandler:
                     query = query.filter_by(id=id)
                 if inventory_id:
                     query = query.filter_by(inventory_id=inventory_id)
+                if category:
+                    query = query.filter_by(category=category)
                 if from_date:
                     query = query.filter(InventoryStockRecord.date >= from_date)
                 if to_date:

@@ -1,6 +1,5 @@
-import pytest
-from datetime import datetime, time
-from cafe_managment_models import Equipment
+from datetime import datetime
+from models.cafe_managment_models import Equipment
 
 
 def test_equipment_crud_cycle(in_memory_db):

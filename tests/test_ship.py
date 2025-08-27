@@ -1,8 +1,6 @@
-import pytest
-from datetime import datetime, timedelta
-from typing import Dict, Any, Optional
-from dbhandler import DbHandler
-from cafe_managment_models import Ship, Order, Supplier
+from datetime import datetime
+from models.dbhandler import DbHandler
+from models.cafe_managment_models import Ship
 from utils import crud_cycle_test
 
 
