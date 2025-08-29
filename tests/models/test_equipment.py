@@ -1,5 +1,7 @@
 from datetime import datetime
 from models.cafe_managment_models import Equipment
+# from test.utils import crud_cycle_test
+from tests.utils import crud_cycle_test
 
 
 def test_equipment_crud_cycle(in_memory_db):
@@ -26,7 +28,7 @@ def test_equipment_crud_cycle(in_memory_db):
     }
 
     # Use the generic CRUD test
-    from utils import crud_cycle_test
+
 
     crud_cycle_test(
         db_handler=in_memory_db,

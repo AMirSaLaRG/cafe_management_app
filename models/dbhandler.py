@@ -1,7 +1,7 @@
 from typing import Optional, List, cast
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, joinedload
 from datetime import time
 import logging
 from models.cafe_managment_models import *
@@ -32,12 +32,12 @@ class DBHandler:
                       category:Optional[str] = None,
                       unit:Optional[str]=None,
                       current_stock:Optional[float]=None,
-                      Safety_Stock:Optional[float]=None,
+                      safety_stock:Optional[float]=None,
                       price_per_unit:Optional[float]=None,
                       ):
 
-        if Safety_Stock is not None and Safety_Stock <0:
-            logging.error("Safety_Stock cannot be negative")
+        if safety_stock is not None and safety_stock < 0:
+            logging.error("safety_stock cannot be negative")
             return None
 
         if current_stock is not None and current_stock <0:
@@ -58,7 +58,7 @@ class DBHandler:
                     name=name,
                     unit=unit,
                     category=category,
-                    Safety_Stock=Safety_Stock,
+                    safety_stock=safety_stock,
                     current_stock=current_stock,
                     price_per_unit=price_per_unit,
 
@@ -76,7 +76,8 @@ class DBHandler:
     def get_inventory(self,
                       id: Optional[int]=None,
                       name:Optional[str]=None,
-                      row_num:Optional[int]=None) -> list[Inventory]:
+                      row_num:Optional[int]=None,
+                      with_recipe:Optional[bool]=False) -> list[Inventory]:
         """Find inventory item(s) with optional filters
 
         Args:
@@ -96,6 +97,8 @@ class DBHandler:
                 if name:
                     lookup_name = name.strip().lower()
                     query = query.filter_by(name=lookup_name)
+                if with_recipe:
+                    query = query.options(joinedload(Inventory.recipe))
                 if row_num:
                     query = query.limit(row_num)
 
@@ -129,8 +132,8 @@ class DBHandler:
             if isinstance(value, str):
                 setattr(inventory, field, value.strip().lower())
 
-        if getattr(inventory, "Safety_Stock", None) is not None and getattr(inventory, "Safety_Stock", None) < 0:
-            logging.error("Safety_Stock cannot be negative")
+        if getattr(inventory, "safety_stock", None) is not None and getattr(inventory, "safety_stock", None) < 0:
+            logging.error("safety_stock cannot be negative")
             return None
 
         if getattr(inventory, "current_stock", None) is not None and getattr(inventory, "current_stock", None) < 0:
@@ -241,7 +244,8 @@ class DBHandler:
                  id:Optional[int]=None,
                  name:Optional[str]=None,
                  size:Optional[str]=None,
-                 row_num:Optional[int]=None) -> list[Menu]:
+                 row_num:Optional[int]=None,
+                 with_recipe:Optional[bool]=False) -> list[Menu]:
         """Get menu items with optional filters
 
         Args:
@@ -266,7 +270,8 @@ class DBHandler:
                 if size:
                     lookup_size = size.strip().lower()
                     query = query.filter_by(size=lookup_size)
-
+                if with_recipe:
+                    query = query.options(joinedload(Menu.recipe))
                 if row_num:
                     query = query.limit(row_num)
 

@@ -13,7 +13,7 @@ class Inventory(Base):
     name = Column(String(255), nullable=False, unique=True)
     unit = Column(String(50))
     current_stock = Column(Float)  # Auto-updated by system
-    Safety_Stock = Column(Float)
+    safety_stock = Column(Float)
     category = Column(String(255))
     price_per_unit = Column(Float)
 
@@ -102,8 +102,8 @@ class Recipe(Base):
     description = Column(String(500))
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-    menu_item = relationship("Menu", back_populates='recipe')
-    inventory_item = relationship("Inventory", back_populates="recipes")
+    menu_item = relationship("Menu", back_populates='recipe', lazy="joined")
+    inventory_item = relationship("Inventory", back_populates="recipes", lazy="joined")
 
 #_______________THIS TABLES CAN ADD ITEM TO MY INVENTORY__________________________
 class Supplier(Base):

@@ -1,12 +1,32 @@
 from models.dbhandler import DBHandler
+from models.cafe_managment_models import *
 
 class InventoryService:
-    def __init__(self, db_handler:DBHandler = DBHandler()):
+    def __init__(self, db_handler:DBHandler):
         self.db = db_handler
 
     #check if it is possible to make this item
-    def check_stock(self, menu_id, quantity):
-        pass
+    def check_stock(self, menu_id, quantity=1):
+        satisfied = True
+        note_missing_items = ""
+        menu_item: Menu = self.db.get_menu(id = menu_id, with_recipe=True)[0]
+        menu_recipe = menu_item.recipe
+        for used_item in menu_recipe:
+            inventory_item = used_item.inventory_item
+            amount = used_item.inventory_item_amount_usage
+            if (inventory_item.current_stock * quantity)< (amount * quantity):
+                satisfied = False
+                note_missing_items = f"\n{inventory_item.name} have {(inventory_item.quantity * quantity)} need {(amount * quantity)}"
+        if note_missing_items:
+            note = f"Can not provide {quantity} x {menu_item.name}  item. {note_missing_items}"
+            print(note)
+        else:
+            note = "Available"
+
+        return satisfied
+
+
+
 
     #reduce ingredients after a sale or menu usage
     def deduct_stock(self, menu_id, quantity):
