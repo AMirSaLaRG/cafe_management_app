@@ -1,13 +1,13 @@
 import pytest
 from datetime import datetime
-from models.dbhandler import DbHandler
+from models.dbhandler import DBHandler
 from models.cafe_managment_models import Personal
 from utils import crud_cycle_test
 
 @pytest.fixture(scope="module")
 def db_handler():
     # Use in-memory SQLite for tests
-    handler = DbHandler("sqlite:///:memory:")
+    handler = DBHandler("sqlite:///:memory:")
     return handler
 
 def test_personal_crud_cycle(db_handler):

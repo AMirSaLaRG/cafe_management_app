@@ -9,7 +9,7 @@ from models.cafe_managment_models import *
 logging.basicConfig(filename='app.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
-class DbHandler:
+class DBHandler:
     """
     add - get - edit - delete _tablename
     """
@@ -32,8 +32,17 @@ class DbHandler:
                       category:Optional[str] = None,
                       unit:Optional[str]=None,
                       current_stock:Optional[float]=None,
+                      Safety_Stock:Optional[float]=None,
                       price_per_unit:Optional[float]=None,
                       ):
+
+        if Safety_Stock is not None and Safety_Stock <0:
+            logging.error("Safety_Stock cannot be negative")
+            return None
+
+        if current_stock is not None and current_stock <0:
+            logging.error("current_stock cannot be negative")
+            return None
 
         if name:
             name = name.lower().strip()
@@ -49,6 +58,7 @@ class DbHandler:
                     name=name,
                     unit=unit,
                     category=category,
+                    Safety_Stock=Safety_Stock,
                     current_stock=current_stock,
                     price_per_unit=price_per_unit,
 
@@ -119,6 +129,13 @@ class DbHandler:
             if isinstance(value, str):
                 setattr(inventory, field, value.strip().lower())
 
+        if getattr(inventory, "Safety_Stock", None) is not None and getattr(inventory, "Safety_Stock", None) < 0:
+            logging.error("Safety_Stock cannot be negative")
+            return None
+
+        if getattr(inventory, "current_stock", None) is not None and getattr(inventory, "current_stock", None) < 0:
+            logging.error("current_stock cannot be negative")
+            return None
         if not inventory.id:
             logging.error("Cannot edit inventory item without a valid ID.")
             return None
@@ -4366,4 +4383,4 @@ class DbHandler:
 
 
 
-db = DbHandler()
+db = DBHandler()

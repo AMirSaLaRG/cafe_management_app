@@ -7,7 +7,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))  # Add project root to Python path
 
 from models.cafe_managment_models import Base
-from models.dbhandler import DbHandler
+from models.dbhandler import DBHandler
 
 
 @pytest.fixture(scope='function')
@@ -16,7 +16,7 @@ def in_memory_db():
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
 
-    db_handler = DbHandler(engine=engine, session_factory=Session)
+    db_handler = DBHandler(engine=engine, session_factory=Session)
     yield db_handler
 
     Base.metadata.drop_all(engine)

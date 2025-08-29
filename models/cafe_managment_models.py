@@ -13,6 +13,7 @@ class Inventory(Base):
     name = Column(String(255), nullable=False, unique=True)
     unit = Column(String(50))
     current_stock = Column(Float)  # Auto-updated by system
+    Safety_Stock = Column(Float)
     category = Column(String(255))
     price_per_unit = Column(Float)
 

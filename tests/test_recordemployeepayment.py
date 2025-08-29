@@ -1,7 +1,7 @@
 import pytest
 from datetime import datetime
 from typing import Dict, Any
-from models.dbhandler import DbHandler
+from models.dbhandler import DBHandler
 from models.cafe_managment_models import RecordEmployeePayment, Personal
 from utils import crud_cycle_test
 
@@ -10,7 +10,7 @@ class TestRecordEmployeePayment:
     """Test cases for RecordEmployeePayment CRUD operations"""
 
     @pytest.fixture
-    def create_personal(self, in_memory_db: DbHandler) -> Personal:
+    def create_personal(self, in_memory_db: DBHandler) -> Personal:
         """Create a personal record for testing"""
         personal_data = {
             'first_name': 'John',
@@ -49,7 +49,7 @@ class TestRecordEmployeePayment:
             'description': 'Updated monthly salary with bonus'
         }
 
-    def test_crud_cycle_recordemployeepayment(self, in_memory_db: DbHandler,
+    def test_crud_cycle_recordemployeepayment(self, in_memory_db: DBHandler,
                                               create_kwargs: Dict[str, Any],
                                               update_kwargs: Dict[str, Any]):
         """Test complete CRUD cycle for RecordEmployeePayment"""
@@ -62,7 +62,7 @@ class TestRecordEmployeePayment:
             lookup_values=[create_kwargs['personal_id'], create_kwargs['from_date']]
         )
 
-    def test_add_recordemployeepayment_invalid_personal_id(self, in_memory_db: DbHandler):
+    def test_add_recordemployeepayment_invalid_personal_id(self, in_memory_db: DBHandler):
         """Test adding RecordEmployeePayment with invalid personal_id"""
         invalid_data = {
             'personal_id': 9999,  # Non-existent personal ID
@@ -74,7 +74,7 @@ class TestRecordEmployeePayment:
         result = in_memory_db.add_recordemployeepayment(**invalid_data)
         assert result is None
 
-    def test_add_recordemployeepayment_negative_values(self, in_memory_db: DbHandler, create_personal: Personal):
+    def test_add_recordemployeepayment_negative_values(self, in_memory_db: DBHandler, create_personal: Personal):
         """Test adding RecordEmployeePayment with negative values"""
         negative_data = {
             'personal_id': create_personal.id,
@@ -87,7 +87,7 @@ class TestRecordEmployeePayment:
         result = in_memory_db.add_recordemployeepayment(**negative_data)
         assert result is None
 
-    def test_add_recordemployeepayment_invalid_dates(self, in_memory_db: DbHandler, create_personal: Personal):
+    def test_add_recordemployeepayment_invalid_dates(self, in_memory_db: DBHandler, create_personal: Personal):
         """Test adding RecordEmployeePayment with invalid date range"""
         invalid_date_data = {
             'personal_id': create_personal.id,
@@ -99,7 +99,7 @@ class TestRecordEmployeePayment:
         result = in_memory_db.add_recordemployeepayment(**invalid_date_data)
         assert result is None
 
-    def test_get_recordemployeepayment_by_personal_id(self, in_memory_db: DbHandler, create_kwargs: Dict[str, Any]):
+    def test_get_recordemployeepayment_by_personal_id(self, in_memory_db: DBHandler, create_kwargs: Dict[str, Any]):
         """Test getting RecordEmployeePayment by personal_id"""
         # Create the record
         record = in_memory_db.add_recordemployeepayment(**create_kwargs)
@@ -111,7 +111,7 @@ class TestRecordEmployeePayment:
         assert results[0].personal_id == create_kwargs['personal_id']
         assert results[0].payment == create_kwargs['payment']
 
-    def test_get_recordemployeepayment_by_date_range(self, in_memory_db: DbHandler, create_kwargs: Dict[str, Any]):
+    def test_get_recordemployeepayment_by_date_range(self, in_memory_db: DBHandler, create_kwargs: Dict[str, Any]):
         """Test getting RecordEmployeePayment by date range"""
         # Create the record
         record = in_memory_db.add_recordemployeepayment(**create_kwargs)
@@ -129,7 +129,7 @@ class TestRecordEmployeePayment:
         assert len(results) == 1
         assert results[0].from_date == create_kwargs['from_date']
 
-    def test_get_recordemployeepayment_by_id(self, in_memory_db: DbHandler, create_kwargs: Dict[str, Any]):
+    def test_get_recordemployeepayment_by_id(self, in_memory_db: DBHandler, create_kwargs: Dict[str, Any]):
         """Test getting RecordEmployeePayment by ID"""
         # Create the record
         record = in_memory_db.add_recordemployeepayment(**create_kwargs)
@@ -140,7 +140,7 @@ class TestRecordEmployeePayment:
         assert len(results) == 1
         assert results[0].id == record.id
 
-    def test_time_overlap_prevention(self, in_memory_db: DbHandler, create_personal: Personal):
+    def test_time_overlap_prevention(self, in_memory_db: DBHandler, create_personal: Personal):
         """Test that overlapping time periods are prevented"""
         # Create first record
         record1_data = {
@@ -164,7 +164,7 @@ class TestRecordEmployeePayment:
         record2 = in_memory_db.add_recordemployeepayment(**record2_data)
         assert record2 is None  # Should be prevented
 
-    def test_non_overlapping_records_allowed(self, in_memory_db: DbHandler, create_personal: Personal):
+    def test_non_overlapping_records_allowed(self, in_memory_db: DBHandler, create_personal: Personal):
         """Test that non-overlapping records are allowed"""
         # Create first record
         record1_data = {
@@ -188,7 +188,7 @@ class TestRecordEmployeePayment:
         record2 = in_memory_db.add_recordemployeepayment(**record2_data)
         assert record2 is not None  # Should be allowed
 
-    def test_edit_recordemployeepayment_time_overlap_prevention(self, in_memory_db: DbHandler,
+    def test_edit_recordemployeepayment_time_overlap_prevention(self, in_memory_db: DBHandler,
                                                                 create_personal: Personal):
         """Test that editing to create time overlap is prevented"""
         # Create first record

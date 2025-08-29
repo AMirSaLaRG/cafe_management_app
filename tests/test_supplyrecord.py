@@ -1,6 +1,6 @@
 import pytest
 from datetime import datetime
-from models.dbhandler import DbHandler
+from models.dbhandler import DBHandler
 from models.cafe_managment_models import SupplyRecord
 from utils import crud_cycle_test
 
@@ -9,7 +9,7 @@ class TestSupplyRecord:
     """Test suite for SupplyRecord CRUD operations"""
 
     @pytest.fixture(autouse=True)
-    def setup(self, in_memory_db: DbHandler):
+    def setup(self, in_memory_db: DBHandler):
         self.db = in_memory_db
 
         # Create prerequisite entities
@@ -46,7 +46,7 @@ class TestSupplyRecord:
         )
         assert self.inventory is not None
 
-    def test_crud_cycle_supplyrecord(self, in_memory_db: DbHandler):
+    def test_crud_cycle_supplyrecord(self, in_memory_db: DBHandler):
         """Test complete CRUD cycle for SupplyRecord"""
 
         create_kwargs = {
@@ -76,7 +76,7 @@ class TestSupplyRecord:
             lookup_values=[self.inventory.id, self.ship.id]
         )
 
-    def test_add_supplyrecord_with_negative_values(self, in_memory_db: DbHandler):
+    def test_add_supplyrecord_with_negative_values(self, in_memory_db: DBHandler):
         """Test that negative values are rejected"""
 
         # Test negative price
@@ -119,7 +119,7 @@ class TestSupplyRecord:
         )
         assert result is None
 
-    def test_add_supplyrecord_without_required_fields(self, in_memory_db: DbHandler):
+    def test_add_supplyrecord_without_required_fields(self, in_memory_db: DBHandler):
         """Test that missing required fields are rejected"""
 
         # Test without inventory_item_id
@@ -138,7 +138,7 @@ class TestSupplyRecord:
         )
         assert result is None
 
-    def test_add_supplyrecord_with_nonexistent_references(self, in_memory_db: DbHandler):
+    def test_add_supplyrecord_with_nonexistent_references(self, in_memory_db: DBHandler):
         """Test that references to non-existent entities are rejected"""
 
         # Test with non-existent inventory item
@@ -157,7 +157,7 @@ class TestSupplyRecord:
         )
         assert result is None
 
-    def test_get_supplyrecord_with_filters(self, in_memory_db: DbHandler):
+    def test_get_supplyrecord_with_filters(self, in_memory_db: DBHandler):
         """Test filtering supply records"""
 
         # Create test supply record
@@ -193,7 +193,7 @@ class TestSupplyRecord:
         results = self.db.get_supplyrecord(ship_id=9999)
         assert len(results) == 0
 
-    def test_get_supplyrecord_with_row_limit(self, in_memory_db: DbHandler):
+    def test_get_supplyrecord_with_row_limit(self, in_memory_db: DBHandler):
         """Test row limit functionality"""
 
         # Create multiple supply records
@@ -214,7 +214,7 @@ class TestSupplyRecord:
         results = self.db.get_supplyrecord(row_num=2)
         assert len(results) == 2
 
-    def test_edit_supplyrecord(self, in_memory_db: DbHandler):
+    def test_edit_supplyrecord(self, in_memory_db: DBHandler):
         """Test editing supply record"""
 
         # Create supply record
@@ -238,7 +238,7 @@ class TestSupplyRecord:
         assert updated.box_amount == 15.0
         assert updated.description == "Updated description"
 
-    def test_delete_supplyrecord(self, in_memory_db: DbHandler):
+    def test_delete_supplyrecord(self, in_memory_db: DBHandler):
         """Test deleting supply record"""
 
         # Create supply record
@@ -267,7 +267,7 @@ class TestSupplyRecord:
         )
         assert len(results) == 0
 
-    def test_delete_nonexistent_supplyrecord(self, in_memory_db: DbHandler):
+    def test_delete_nonexistent_supplyrecord(self, in_memory_db: DBHandler):
         """Test deleting non-existent supply record"""
 
         # Create a supply record object with non-existent IDs

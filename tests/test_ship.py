@@ -1,10 +1,10 @@
 from datetime import datetime
-from models.dbhandler import DbHandler
+from models.dbhandler import DBHandler
 from models.cafe_managment_models import Ship
 from utils import crud_cycle_test
 
 
-def test_ship_crud_cycle(in_memory_db: DbHandler):
+def test_ship_crud_cycle(in_memory_db: DBHandler):
     """Test complete CRUD cycle for Ship using the utility function"""
     # First create prerequisite data
     supplier = in_memory_db.add_supplier(
@@ -49,7 +49,7 @@ def test_ship_crud_cycle(in_memory_db: DbHandler):
     )
 
 
-def test_add_ship_success(in_memory_db: DbHandler):
+def test_add_ship_success(in_memory_db: DBHandler):
     """Test successfully adding a ship record"""
     # First create a supplier and order
     supplier = in_memory_db.add_supplier(
@@ -88,7 +88,7 @@ def test_add_ship_success(in_memory_db: DbHandler):
     assert ship.description == "Test shipment"
 
 
-def test_add_ship_nonexistent_order(in_memory_db: DbHandler):
+def test_add_ship_nonexistent_order(in_memory_db: DBHandler):
     """Test adding ship with non-existent order ID"""
     ship = in_memory_db.add_ship(
         order_id=999,  # Non-existent order ID
@@ -98,7 +98,7 @@ def test_add_ship_nonexistent_order(in_memory_db: DbHandler):
     assert ship is None
 
 
-def test_add_ship_minimal_data(in_memory_db: DbHandler):
+def test_add_ship_minimal_data(in_memory_db: DBHandler):
     """Test adding ship with minimal required data"""
     # Create prerequisite data
     supplier = in_memory_db.add_supplier(name="Minimal Supplier")
@@ -116,7 +116,7 @@ def test_add_ship_minimal_data(in_memory_db: DbHandler):
     assert ship.date is not None  # Should be auto-set to current datetime
 
 
-def test_get_ship_by_order_id(in_memory_db: DbHandler):
+def test_get_ship_by_order_id(in_memory_db: DBHandler):
     """Test retrieving ships by order ID"""
     # Setup test data
     supplier = in_memory_db.add_supplier(name="Filter Supplier")
@@ -143,7 +143,7 @@ def test_get_ship_by_order_id(in_memory_db: DbHandler):
     assert order2_ships[0].order_id == order2.id
 
 
-def test_get_ship_by_shipper(in_memory_db: DbHandler):
+def test_get_ship_by_shipper(in_memory_db: DBHandler):
     """Test retrieving ships by shipper name"""
     supplier = in_memory_db.add_supplier(name="Shipper Test Supplier")
     order = in_memory_db.add_order(supplier_id=supplier.id, buyer="shipper_test")
@@ -161,7 +161,7 @@ def test_get_ship_by_shipper(in_memory_db: DbHandler):
     assert len(slow_ships) == 1
 
 
-def test_get_ship_by_date_range(in_memory_db: DbHandler):
+def test_get_ship_by_date_range(in_memory_db: DBHandler):
     """Test retrieving ships by date range"""
     supplier = in_memory_db.add_supplier(name="Date Test Supplier")
     order = in_memory_db.add_order(supplier_id=supplier.id, buyer="date_test")
@@ -191,7 +191,7 @@ def test_get_ship_by_date_range(in_memory_db: DbHandler):
     assert len(feb_ships) == 2
 
 
-def test_get_ship_multiple_filters(in_memory_db: DbHandler):
+def test_get_ship_multiple_filters(in_memory_db: DBHandler):
     """Test retrieving ships with multiple filters"""
     supplier = in_memory_db.add_supplier(name="Multi Filter Supplier")
     order = in_memory_db.add_order(supplier_id=supplier.id, buyer="multi_test")
@@ -236,7 +236,7 @@ def test_get_ship_multiple_filters(in_memory_db: DbHandler):
     assert filtered_ships[0].receiver == "warehouse a"
 
 
-def test_edit_ship_success(in_memory_db: DbHandler):
+def test_edit_ship_success(in_memory_db: DBHandler):
     """Test successfully editing a ship record"""
     supplier = in_memory_db.add_supplier(name="Edit Test Supplier")
     order = in_memory_db.add_order(supplier_id=supplier.id, buyer="edit_test")
@@ -263,7 +263,7 @@ def test_edit_ship_success(in_memory_db: DbHandler):
     assert updated_ship.id == ship.id  # ID should remain the same
 
 
-def test_edit_ship_nonexistent(in_memory_db: DbHandler):
+def test_edit_ship_nonexistent(in_memory_db: DBHandler):
     """Test editing a non-existent ship record"""
     fake_ship = Ship(id=999, order_id=999)  # Non-existent ship
 
@@ -271,7 +271,7 @@ def test_edit_ship_nonexistent(in_memory_db: DbHandler):
     assert result is None
 
 
-def test_delete_ship_success(in_memory_db: DbHandler):
+def test_delete_ship_success(in_memory_db: DBHandler):
     """Test successfully deleting a ship record"""
     supplier = in_memory_db.add_supplier(name="Delete Test Supplier")
     order = in_memory_db.add_order(supplier_id=supplier.id, buyer="delete_test")
@@ -291,7 +291,7 @@ def test_delete_ship_success(in_memory_db: DbHandler):
     assert len(remaining_ships) == 0
 
 
-def test_delete_ship_nonexistent(in_memory_db: DbHandler):
+def test_delete_ship_nonexistent(in_memory_db: DBHandler):
     """Test deleting a non-existent ship record"""
     fake_ship = Ship(id=999, order_id=999)  # Non-existent ship
 
@@ -299,7 +299,7 @@ def test_delete_ship_nonexistent(in_memory_db: DbHandler):
     assert delete_result is False
 
 
-def test_get_ship_ordering(in_memory_db: DbHandler):
+def test_get_ship_ordering(in_memory_db: DBHandler):
     """Test that ships are returned in correct order (most recent first)"""
     supplier = in_memory_db.add_supplier(name="Order Test Supplier")
     order = in_memory_db.add_order(supplier_id=supplier.id, buyer="order_test")
@@ -324,7 +324,7 @@ def test_get_ship_ordering(in_memory_db: DbHandler):
     assert all_ships[2].date == datetime(2024, 1, 1)
 
 
-def test_get_ship_row_limit(in_memory_db: DbHandler):
+def test_get_ship_row_limit(in_memory_db: DBHandler):
     """Test limiting the number of returned ships"""
     supplier = in_memory_db.add_supplier(name="Limit Test Supplier")
     order = in_memory_db.add_order(supplier_id=supplier.id, buyer="limit_test")

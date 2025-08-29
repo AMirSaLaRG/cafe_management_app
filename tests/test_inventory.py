@@ -6,8 +6,8 @@ def test_inventory_crud_cycle(in_memory_db):
     crud_cycle_test(
         db_handler=in_memory_db,
         model_class=Inventory,
-        create_kwargs={"name": "Honey", "unit": "kg", "current_stock": 2.0},
-        update_kwargs={"current_stock": 5.0, "unit": "kilogram"},
+        create_kwargs={"name": "Honey", "unit": "kg", "current_stock": 2.0, "Safety_Stock": 300},
+        update_kwargs={"current_stock": 5.0, "unit": "kilogram", "Safety_Stock":0},
         lookup_fields=["name", 'id'],  # for Inventory, we often fetch by name
         lookup_values=["honey", 1]
     )
