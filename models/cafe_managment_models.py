@@ -111,6 +111,7 @@ class Supplier(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False, unique=True)
+    load_time_days = Column(Integer)
     contact_channel = Column(String)
     contact_address = Column(String)
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))

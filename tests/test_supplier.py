@@ -12,11 +12,13 @@ def test_supplier_crud_cycle(in_memory_db):
         create_kwargs={
             "name": "Test Supplier Inc.",
             "contact_channel": "email",
-            "contact_address": "test@supplier.com"
+            "contact_address": "test@supplier.com",
+            "load_time_days": 10
         },
         update_kwargs={
             "contact_channel": "phone",
-            "contact_address": "+1234567890"
+            "contact_address": "+1234567890",
+            "load_time_days": 0
         },
         lookup_fields=['name'],
         lookup_values=['test supplier inc.']  # Lowercase due to your implementation
