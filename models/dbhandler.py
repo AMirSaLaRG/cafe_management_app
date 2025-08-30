@@ -349,10 +349,12 @@ class DBHandler:
     #--InventoryStockRecord--
     def add_inventorystockrecord(self,
                  inventory_id:int,
-                 change_amount:float,
+                 change_amount:float=None,
                  category:str = None,
+                 foreign_id:int = None,
                  auto_calculated_amount:Optional[float]=None,
                  manual_report:Optional[float]=None,
+                 reporter:Optional[str]=None,
                  date:datetime=None,
                  description:Optional[str]=None,
                  ) -> Optional[InventoryStockRecord]:
@@ -364,6 +366,11 @@ class DBHandler:
 
         if category is not None:
             category = category.strip().lower()
+
+        if reporter is not None:
+            reporter = reporter.strip().lower()
+
+
 
         with self.Session() as session:
             try:
@@ -377,9 +384,11 @@ class DBHandler:
                 new_record = InventoryStockRecord(
                     inventory_id=inventory_id,
                     category=category,
+                    foreign_id=foreign_id,
                     change_amount=change_amount,
                     auto_calculated_amount=auto_calculated_amount,
                     manual_report=manual_report,
+                    reporter=reporter,
                     date=date,
                     description=description,
                 )
@@ -398,9 +407,12 @@ class DBHandler:
             id:Optional[int]=None,
             inventory_id: Optional[int]=None,
             category: Optional[str]=None,
+            reporter: Optional[str]=None,
+            foreign_id: Optional[int]=None,
             from_date: Optional[datetime] = None,
             to_date: Optional[datetime] = None,
             row_num: Optional[int]=None,
+            latest_check:bool=False,
     ) ->List[InventoryStockRecord]:
         """Get inventory record(s) for inventory items
 
@@ -410,6 +422,10 @@ class DBHandler:
             from_date: Optional start date for filtering records
             to_date: Optional end date for filtering records
             row_num: Maximum number of records to return
+            category: category
+            latest_check: latest manual check
+            reporter: reporter
+            foreign_id: foreign key
 
         Returns:
             List of InventoryRecord objects (empty list if no matches found or error occurs)
@@ -426,12 +442,29 @@ class DBHandler:
                     query = query.filter_by(inventory_id=inventory_id)
                 if category:
                     query = query.filter_by(category=category)
+
+                if foreign_id:
+                    query = query.filter_by(foreign_id=foreign_id)
+
+                if reporter:
+                    query = query.filter_by(reporter=reporter)
+
                 if from_date:
                     query = query.filter(InventoryStockRecord.date >= from_date)
                 if to_date:
                     query = query.filter(InventoryStockRecord.date <= to_date)
+
+                if latest_check:
+                    query = query.filter(InventoryStockRecord.manual_report.isnot(None))
+                    if row_num is None:
+                        query = query.limit(1)
+
                 if row_num:
                     query = query.limit(row_num)
+
+
+
+
 
                 result = query.all()
                 logging.info(f"Found {len(result)} inventory records")

@@ -12,7 +12,7 @@ class Inventory(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(255), nullable=False, unique=True)
     unit = Column(String(50))
-    current_stock = Column(Float)  # Auto-updated by system
+    current_stock = Column(Float)
     safety_stock = Column(Float)
     category = Column(String(255))
     price_per_unit = Column(Float)
@@ -34,10 +34,12 @@ class InventoryStockRecord(Base):
     id = Column(Integer, primary_key=True)
     inventory_id = Column(ForeignKey('inventory.id'))
     category = Column(String)
+    foreign_id = Column(Integer)
     date = Column(TIMESTAMP)
     change_amount = Column(Float)
     auto_calculated_amount = Column(Float)
     manual_report = Column(Float)
+    reporter = Column(String)
     description = Column(String(500))
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
