@@ -13,6 +13,9 @@ class Inventory(Base):
     name = Column(String(255), nullable=False, unique=True)
     unit = Column(String(50))
     current_stock = Column(Float)
+    current_price = Column(Float)
+    current_supplier = Column(ForeignKey('supplier.id'))
+    daily_usage = Column(Float)
     safety_stock = Column(Float)
     category = Column(String(255))
     price_per_unit = Column(Float)
@@ -21,7 +24,7 @@ class Inventory(Base):
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
-
+    supplier = relationship("Supplier", back_populates="inventory_item", lazy="joined")
     recipes = relationship("Recipe", back_populates="inventory_item")
     supply_record = relationship("SupplyRecord", back_populates="inventory_item")
     usage_records = relationship("InventoryUsage", back_populates="inventory_item")
@@ -118,6 +121,7 @@ class Supplier(Base):
     contact_address = Column(String)
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+    inventory_item = relationship("Inventory", back_populates="supplier", lazy="joined")
     orders = relationship("Order", back_populates="supplier")
 
 #Done
@@ -133,8 +137,8 @@ class Order(Base):
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
-    supplier = relationship("Supplier", back_populates="orders")
-    ship = relationship("Ship", back_populates="order")
+    supplier = relationship("Supplier", back_populates="orders", lazy="joined")
+    ship = relationship("Ship", back_populates="order", lazy="joined")
 
 #done
 class Ship(Base):
@@ -171,7 +175,7 @@ class SupplyRecord(Base):
 
 
     inventory_item = relationship("Inventory", back_populates="supply_record")
-    ship = relationship("Ship", back_populates="supply_record")
+    ship = relationship("Ship", back_populates="supply_record", lazy="joined")
 #_______________THIS TABLES CAN DEDUCT ITEM FROM MY INVENTORY__________________________
 
 #done
