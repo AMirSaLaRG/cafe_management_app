@@ -1,8 +1,10 @@
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from models.dbhandler import DBHandler
 from models.cafe_managment_models import *
+
+INITIATE_STOCK_CATEGORY = "Initiate Stock"
 
 class InventoryService:
     def __init__(self, db_handler:DBHandler):
@@ -39,7 +41,7 @@ class InventoryService:
             calculating_amounts = [item for item in calculating_amounts if item.id != last_report.id]
 
         # Step 4: Sum all change_amounts
-        total_changes = sum(item.change_amount for item in calculating_amounts)
+        total_changes = sum(item.change_amount for item in calculating_amounts if item.change_amount is not None)
 
         # Step 5: Final stock
         final_stock = base_amount + total_changes
@@ -259,14 +261,141 @@ class InventoryService:
         self._calculate_inventory(inventory_item_id=inventory_id)
         return True
 
-    #see where stock went
-    def get_usage_report(self, inventory_id, from_date, to_date):
-        pass
 
     #returns items blow threshold
-    def low_stock_alerts(self):
-        pass
+    def low_stock_alerts(self, item_list:Optional[list[Inventory]] = None) -> dict[str, float]:
+        alert_dict = {}
 
+        if item_list is None:
+            all_inventory = self.db.get_inventory()
+            for inventory_item in all_inventory:
+                current_stock = inventory_item.current_stock or 0
+                safety_stock = inventory_item.safety_stock or 0
+                the_supplier = inventory_item.supplier
+                load_time_day = the_supplier.load_time_days or 0
+                daily_usage = inventory_item.daily_usage or 0
+
+                threshold = safety_stock + (load_time_day * daily_usage)
+                if current_stock <= threshold:
+                    alert_dict[inventory_item.name] = current_stock
+        else:
+            for inventory_item in item_list:
+                current_stock = inventory_item.current_stock
+                safety_stock = inventory_item.safety_stock
+                load_time_day = inventory_item.current_supplier.load_time_day
+                daily_usage = inventory_item.daily_usage
+
+                threshold = safety_stock + (load_time_day * daily_usage)
+                if current_stock <= threshold:
+                    alert_dict[inventory_item.name] = current_stock
+
+
+        return alert_dict
+
+
+    #see where stock went
+    def get_inventory_stock_report(self, inventory_id:int, from_date: datetime=None, to_date: datetime=None) -> list[InventoryStockRecord]:
+        return self.db.get_inventorystockrecord(inventory_id=inventory_id, from_date=from_date, to_date=to_date)
+
+
+    #do not handle gaps
     #Predict future needs based on
-    def forecast_inventory(self, menu_id, days=7):
-        pass
+    def forecast_inventory(self, inventory_id, days=7) -> dict[str, float]:
+        """
+        this function forecast the amount for item in days
+        :param
+         inventory_id: id of item
+         days: days to forecast
+
+        :return: a list with name and stock value of it after that many days
+        """
+
+        item = self.db.get_inventory(id=inventory_id)[0]
+        daily_usage = item.daily_usage
+
+        usage_after_days = daily_usage * days
+        current_stock = item.current_stock
+
+        difference = current_stock - usage_after_days
+
+        return {item.name: difference}
+
+
+
+    def create_new_inventory_item(self,
+                                  item_name:str,
+                                  unit:str,
+                                  category:str,
+                                  person_who_added:str,
+                                  current_supplier_id: int = None,
+                                  daily_usage:float = None,
+                                  safety_stock:float=None,
+                                  price_per_unit:float=None,
+                                  current_stock:float=0):
+
+
+        # name unit category is basic of an inventory item to add to inventory model
+        # next check if there is daily_usage and safety_stock and price_per_unit and current_supplier_id is there
+        # all of top items will add to inventory
+
+        new_item = self.db.add_inventory(name=item_name, unit=unit, category=category,
+                              current_supplier=current_supplier_id, price_per_unit=price_per_unit,
+                              daily_usage=daily_usage, safety_stock=safety_stock,
+                                         )
+        if new_item is None:
+            return False
+        # if there is a current_stock we should add restock_by_inventory_item request
+        if self.manual_report(inventory_id=new_item.id,
+                              amount=current_stock,
+                              reporter=person_who_added,
+                              reason=INITIATE_STOCK_CATEGORY, ):
+            return True
+
+
+        return False
+
+    def change_daily_usage(self, inventory_id:int, new_daily_usage:float) -> bool:
+        search_list = self.db.get_inventory(id=inventory_id)
+        if search_list and new_daily_usage>=0:
+            the_item = search_list[0]
+            the_item.daily_usage = new_daily_usage
+            approve = self.db.edit_inventory(the_item)
+            if approve:
+                return True
+
+        return False
+
+
+    def change_supplier(self, inventory_id:int, supplier_id:int) -> bool:
+        search_list = self.db.get_inventory(id=inventory_id)
+        if search_list and self.db.get_supplier(id=supplier_id):
+            the_item = search_list[0]
+            the_item.current_supplier = supplier_id
+            approve = self.db.edit_inventory(the_item)
+            if approve:
+                return True
+
+        return False
+
+    def change_safety_stock(self, inventory_id:int, new_safety_stock:float) -> bool:
+        search_list = self.db.get_inventory(id=inventory_id)
+        if search_list and new_safety_stock>=0:
+            the_item = search_list[0]
+            the_item.safety_stock = new_safety_stock
+            approve = self.db.edit_inventory(the_item)
+            if approve:
+                return True
+
+        return False
+
+    def set_current_price(self, inventory_id:int, current_price:float):
+        search_list = self.db.get_inventory(id=inventory_id)
+        if search_list and current_price>=0:
+            the_item = search_list[0]
+            the_item.current_price = current_price
+            approve = self.db.edit_inventory(the_item)
+            if approve:
+                return True
+
+        return False
+

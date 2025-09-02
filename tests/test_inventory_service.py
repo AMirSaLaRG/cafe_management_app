@@ -1,16 +1,19 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
+from services import inventory_service
 from services.inventory_service import InventoryService
 import pytest
 
 
 @pytest.fixture
 def setup_menu_inventory(in_memory_db):
+    sup1 = in_memory_db.add_supplier('Supplier 1', load_time_days=1)
+    sup2 = in_memory_db.add_supplier('Supplier 2', load_time_days=2)
     menu = in_memory_db.add_menu(name='latte', size='L')
     menu2 = in_memory_db.add_menu(name='monster', size='L')
-    inv1 = in_memory_db.add_inventory(name='coffee', unit='gr',  safety_stock=50)
-    inv2 = in_memory_db.add_inventory(name='milk', unit='L', safety_stock=2)
-    inv3 = in_memory_db.add_inventory(name='straw', unit='unit',  safety_stock=1)
+    inv1 = in_memory_db.add_inventory(name='coffee', unit='gr',  safety_stock=50, daily_usage=50, current_supplier=sup1.id)
+    inv2 = in_memory_db.add_inventory(name='milk', unit='L', safety_stock=2, daily_usage=2, current_supplier=sup1.id)
+    inv3 = in_memory_db.add_inventory(name='straw', unit='unit',  safety_stock=1, daily_usage=1, current_supplier=sup1.id)
 
 
     base_stock_record1 = in_memory_db.add_inventorystockrecord(inventory_id=inv1.id, manual_report=100)
@@ -29,7 +32,7 @@ def setup_menu_inventory(in_memory_db):
     test3 = service._calculate_inventory(inv3.id)
     assert test1 and test2 and test3
 
-    return {"menu": menu, 'menu2': menu2, "inv1": inv1, "inv2":inv2, "inv3":inv3}
+    return {"menu": menu, 'menu2': menu2, "inv1": inv1, "inv2":inv2, "inv3":inv3, 'sup1':sup1, 'sup2':sup2}
 
 def test_inventory_check_menu(in_memory_db, setup_menu_inventory):
     service = InventoryService(in_memory_db)
@@ -204,3 +207,222 @@ def test_manual_check(in_memory_db, setup_menu_inventory):
     stock_after1 = in_memory_db.get_inventory(id=setup_menu_inventory['inv1'].id)[0].current_stock
 
     assert stock_after1 == 0
+
+def test_inventory_alerts(in_memory_db, setup_menu_inventory):
+    service = InventoryService(in_memory_db)
+
+    test1= service.low_stock_alerts()
+    assert test1 is not {setup_menu_inventory['inv3'].name: setup_menu_inventory['inv3'].current_stock}
+
+
+
+
+def test_add_inventory_item(in_memory_db, setup_menu_inventory):
+    service = InventoryService(in_memory_db)
+
+    from services.inventory_service import INITIATE_STOCK_CATEGORY
+
+    test1 = service.create_new_inventory_item( item_name="Sibzamini",
+                                  unit="kg",
+                                  category="pishghza",
+                                  person_who_added="Mr: test",
+                                  current_supplier_id= setup_menu_inventory["sup1"].id,
+                                  daily_usage = 5.43,
+                                  safety_stock=10,
+                                  price_per_unit=105.500,
+                                  current_stock=100)
+    assert test1
+
+    check1 = in_memory_db.get_inventorystockrecord(description=INITIATE_STOCK_CATEGORY)
+    assert check1
+    assert check1[0].manual_report == 100
+
+    check2 = in_memory_db.get_inventory(name="SIBzaMINI")[0]
+    assert check2.unit == "kg"
+    assert check2.category == "pishghza"
+    assert check2.price_per_unit == 105.500
+    assert check2.current_stock == 100
+
+def test_one_parameter_changers_daily_usage(in_memory_db, setup_menu_inventory):
+    service = InventoryService(in_memory_db)
+    the_inventory_id = setup_menu_inventory["inv1"].id
+
+    test1 = service.change_daily_usage(the_inventory_id, 0)
+    assert test1
+
+    check1 = in_memory_db.get_inventory(id=the_inventory_id)
+    assert check1
+    assert check1[0].daily_usage == 0
+
+    test1 = service.change_daily_usage(the_inventory_id, 1500)
+    assert test1
+
+    check1 = in_memory_db.get_inventory(id=the_inventory_id)
+    assert check1
+    assert check1[0].daily_usage == 1500
+
+
+    test1 = service.change_daily_usage(the_inventory_id, -1)
+    assert test1 is False
+
+    check1 = in_memory_db.get_inventory(id=the_inventory_id)
+    assert check1
+    assert check1[0].daily_usage == 1500
+
+def test_one_parameter_changers_supplier(in_memory_db, setup_menu_inventory):
+    service = InventoryService(in_memory_db)
+    the_inventory_id = setup_menu_inventory["inv1"].id
+
+    test1 = service.change_supplier(the_inventory_id, 2)
+    assert test1
+
+    check1 = in_memory_db.get_inventory(id=the_inventory_id)
+    assert check1
+    assert check1[0].current_supplier == 2
+
+    test1 = service.change_supplier(the_inventory_id, 1)
+    assert test1
+
+    check1 = in_memory_db.get_inventory(id=the_inventory_id)
+    assert check1
+    assert check1[0].current_supplier == 1
+
+    test1 = service.change_supplier(the_inventory_id, 3)
+    assert test1 is False
+
+    check1 = in_memory_db.get_inventory(id=the_inventory_id)
+    assert check1
+    assert check1[0].current_supplier == 1
+
+
+def test_one_parameter_changers_safety_stock(in_memory_db, setup_menu_inventory):
+    service = InventoryService(in_memory_db)
+    the_inventory_id = setup_menu_inventory["inv1"].id
+
+    test1 = service.change_safety_stock(the_inventory_id, 0)
+    assert test1
+
+    check1 = in_memory_db.get_inventory(id=the_inventory_id)
+    assert check1
+    assert check1[0].safety_stock == 0
+
+    test1 = service.change_safety_stock(the_inventory_id, 1500)
+    assert test1
+
+    check1 = in_memory_db.get_inventory(id=the_inventory_id)
+    assert check1
+    assert check1[0].safety_stock == 1500
+
+
+    test1 = service.change_safety_stock(the_inventory_id, -1)
+    assert test1 is False
+
+    check1 = in_memory_db.get_inventory(id=the_inventory_id)
+    assert check1
+    assert check1[0].safety_stock == 1500
+
+
+def test_one_parameter_changers_current_price(in_memory_db, setup_menu_inventory):
+    service = InventoryService(in_memory_db)
+    the_inventory_id = setup_menu_inventory["inv1"].id
+
+    test1 = service.set_current_price(the_inventory_id, 0)
+    assert test1
+
+    check1 = in_memory_db.get_inventory(id=the_inventory_id)
+    assert check1
+    assert check1[0].current_price == 0
+
+    test1 = service.set_current_price(the_inventory_id, 1500)
+    assert test1
+
+    check1 = in_memory_db.get_inventory(id=the_inventory_id)
+    assert check1
+    assert check1[0].current_price == 1500
+
+
+    test1 = service.set_current_price(the_inventory_id, -1)
+    assert test1 is False
+
+    check1 = in_memory_db.get_inventory(id=the_inventory_id)
+    assert check1
+    assert check1[0].current_price == 1500
+
+
+def test_forecast_inventory_simple_basic(in_memory_db):
+    """Test basic inventory forecasting with simple daily usage"""
+    service = InventoryService(in_memory_db)
+    supplier = in_memory_db.add_supplier('Test Supplier')
+    inventory = in_memory_db.add_inventory(
+        name='test_item_simple',
+        unit='kg',
+        safety_stock=10,
+        daily_usage=3.0,  # Set daily usage explicitly
+        current_supplier=supplier.id,
+        current_stock=50.0
+    )
+
+    # Test forecast - should use the manual daily_usage field
+    forecast = service.forecast_inventory(inventory.id, days=10)
+
+    # 50 current stock - (3 daily usage * 10 days) = 20 remaining
+    expected_remaining = 20.0
+    assert forecast[inventory.name] == expected_remaining
+
+
+def test_forecast_inventory_zero_daily_usage(in_memory_db):
+    """Test forecasting when daily usage is zero"""
+    service = InventoryService(in_memory_db)
+    supplier = in_memory_db.add_supplier('Test Supplier')
+    inventory = in_memory_db.add_inventory(
+        name='non_consumable_item',
+        unit='units',
+        safety_stock=5,
+        daily_usage=0.0,  # Zero usage
+        current_supplier=supplier.id,
+        current_stock=100.0
+    )
+
+    # Test forecast for 30 days with zero usage
+    forecast = service.forecast_inventory(inventory.id, days=30)
+
+    # 100 current stock - (0 daily usage * 30 days) = 100 (no change)
+    assert forecast[inventory.name] == 100.0
+
+
+def test_forecast_inventory_negative_result_simple(in_memory_db):
+    """Test forecasting when stock will be depleted (simple version)"""
+    service = InventoryService(in_memory_db)
+    supplier = in_memory_db.add_supplier('Test Supplier')
+    inventory = in_memory_db.add_inventory(
+        name='high_usage_item',
+        unit='units',
+        daily_usage=15.0,  # High daily usage
+        current_supplier=supplier.id,
+        current_stock=40.0  # Low stock
+    )
+
+    # Forecast for 5 days
+    forecast = service.forecast_inventory(inventory.id, days=5)
+
+    # 40 current stock - (15 daily usage * 5 days) = -35 (depletion)
+    assert forecast[inventory.name] == -35.0
+
+
+def test_forecast_inventory_default_days_parameter(in_memory_db):
+    """Test forecasting with default days parameter (7 days)"""
+    service = InventoryService(in_memory_db)
+    supplier = in_memory_db.add_supplier('Test Supplier')
+    inventory = in_memory_db.add_inventory(
+        name='default_test_item',
+        unit='L',
+        daily_usage=4.0,
+        current_supplier=supplier.id,
+        current_stock=50.0
+    )
+
+    # Test with default days (should be 7)
+    forecast = service.forecast_inventory(inventory.id)
+
+    # 50 current stock - (4 daily usage * 7 days) = 22 remaining
+    assert forecast[inventory.name] == 22.0
