@@ -32,9 +32,12 @@ class DBHandler:
                       category:Optional[str] = None,
                       unit:Optional[str]=None,
                       current_stock:Optional[float]=None,
+                      current_supplier:Optional[int]=None,
+                      current_price:Optional[float]=None,
                       safety_stock:Optional[float]=None,
                       price_per_unit:Optional[float]=None,
-                      ):
+                      daily_usage:Optional[float]=None,
+                      ) -> Optional[Inventory]:
 
         if safety_stock is not None and safety_stock < 0:
             logging.error("safety_stock cannot be negative")
@@ -42,6 +45,14 @@ class DBHandler:
 
         if current_stock is not None and current_stock <0:
             logging.error("current_stock cannot be negative")
+            return None
+
+        if daily_usage is not None and daily_usage <0:
+            logging.error("daily_usage cannot be negative")
+            return None
+
+        if current_price is not None and current_price <0:
+            logging.error("current_price cannot be negative")
             return None
 
         if name:
@@ -60,7 +71,10 @@ class DBHandler:
                     category=category,
                     safety_stock=safety_stock,
                     current_stock=current_stock,
+                    current_price=current_price,
+                    current_supplier=current_supplier,
                     price_per_unit=price_per_unit,
+                    daily_usage=daily_usage
 
                 )
                 session.add(new_item)
@@ -413,6 +427,7 @@ class DBHandler:
             to_date: Optional[datetime] = None,
             row_num: Optional[int]=None,
             latest_check:bool=False,
+            description:str=None,
     ) ->List[InventoryStockRecord]:
         """Get inventory record(s) for inventory items
 
@@ -426,6 +441,7 @@ class DBHandler:
             latest_check: latest manual check
             reporter: reporter
             foreign_id: foreign key
+            description: description
 
         Returns:
             List of InventoryRecord objects (empty list if no matches found or error occurs)
@@ -458,6 +474,8 @@ class DBHandler:
                     query = query.filter(InventoryStockRecord.manual_report.isnot(None))
                     if row_num is None:
                         query = query.limit(1)
+                if description:
+                    query = query.filter_by(description=description)
 
                 if row_num:
                     query = query.limit(row_num)
@@ -872,6 +890,7 @@ class DBHandler:
                     name=name,
                     contact_channel=contact_channel,
                     contact_address=contact_address,
+                    load_time_days=load_time_days,
                 )
                 session.add(supplier)
                 session.commit()
