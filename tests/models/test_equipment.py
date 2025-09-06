@@ -145,8 +145,8 @@ def test_equipment_get_filters(in_memory_db):
 
     # Filter by date range (purchase date)
     jan_equipment = in_memory_db.get_equipment(
-        from_date=datetime(2024, 1, 1),
-        to_date=datetime(2024, 1, 31)
+        purchase_from_date=datetime(2024, 1, 1),
+        purchase_to_date=datetime(2024, 1, 31)
     )
     assert len(jan_equipment) == 1
 
@@ -170,9 +170,8 @@ def test_equipment_date_expire_filter(in_memory_db):
 
     # Test expire date filtering
     mid_year_expire = in_memory_db.get_equipment(
-        date_expire=True,
-        from_date=datetime(2024, 5, 1),
-        to_date=datetime(2024, 7, 1)
+        expire_from_date=datetime(2024, 5, 1),
+        expire_to_date=datetime(2024, 7, 1)
     )
     assert len(mid_year_expire) == 0 #noting get expire in this time
 
@@ -184,9 +183,8 @@ def test_equipment_date_expire_filter(in_memory_db):
     )
 
     q1_purchases = in_memory_db.get_equipment(
-        date_expire=False,
-        from_date=datetime(2024, 1, 1),
-        to_date=datetime(2024, 3, 31)
+        purchase_from_date=datetime(2024, 1, 1),
+        purchase_to_date=datetime(2024, 3, 31)
     )
     assert len(q1_purchases) >= 1
 

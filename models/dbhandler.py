@@ -1,6 +1,6 @@
-from typing import Optional, List, cast
+from typing import Optional, List, cast, Union
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, and_
 from sqlalchemy.orm import sessionmaker, joinedload
 from datetime import time
 import logging
@@ -112,7 +112,7 @@ class DBHandler:
                     lookup_name = name.strip().lower()
                     query = query.filter_by(name=lookup_name)
                 if with_recipe:
-                    query = query.options(joinedload(Inventory.recipe))
+                    query = query.options(joinedload(Inventory.recipes))
                 if row_num:
                     query = query.limit(row_num)
 
@@ -199,6 +199,7 @@ class DBHandler:
                  size:Optional[str],
                  category:Optional[str]=None,
                  current_price:Optional[float]=None,
+                 suggested_price:Optional[float]=None,
                  value_added_tax:Optional[float]=None,
                  serving:bool=True,
                  description:Optional[str]=None,
@@ -209,6 +210,9 @@ class DBHandler:
             return None
 
         if current_price is not None and current_price < 0:
+            logging.error("Price cannot be negative")
+            return None
+        if suggested_price is not None and suggested_price < 0:
             logging.error("Price cannot be negative")
             return None
         if value_added_tax is not None and not (0 <= value_added_tax <= 1):
@@ -240,6 +244,7 @@ class DBHandler:
                     size=size,
                     category=category,
                     current_price=current_price,
+                    suggested_price=suggested_price,
                     value_added_tax=value_added_tax,
                     serving=serving,
                     description=description
@@ -255,7 +260,7 @@ class DBHandler:
                 return None
 
     def get_menu(self,
-                 id:Optional[int]=None,
+                 id:Optional[Union[int, list[int]]]=None,
                  name:Optional[str]=None,
                  size:Optional[str]=None,
                  row_num:Optional[int]=None,
@@ -267,6 +272,7 @@ class DBHandler:
             name: Menu item name (case-insensitive)
             size: If provided, searches for exact name+size match
             row_num: Maximum number of records to return
+            with_recipe: this option joints Menu to its recipe
 
         Returns:
             List of Menu objects (empty list if no matches found or error occurs)
@@ -275,8 +281,12 @@ class DBHandler:
         with (self.Session() as session):
             try:
                 query = session.query(Menu).order_by(Menu.time_create.desc())
-                if id:
-                    query = query.filter_by(id=id)
+                if id is not None:
+                    if isinstance(id, list):
+                        if id:
+                            query = query.filter(Menu.id.in_(id))
+                    else:
+                        query = query.filter_by(id=id)
                 if name:
                     lookup_name = name.strip().lower()
                     query = query.filter_by(name=lookup_name)
@@ -298,7 +308,7 @@ class DBHandler:
                 logging.error(f"Failed to find menu item")
                 return []
 
-    def edit_menu(self, menu:Menu) -> Optional[Menu]:
+    def edit_menu(self, menu:Union[Menu, list[Menu]]) -> Menu | list[Menu] | None:
         """
         Updates an existing menu item in the database.
 
@@ -313,30 +323,63 @@ class DBHandler:
             The updated menu object after it has been committed, or None
             if an error occurred.
         """
+        if isinstance(menu, Menu):
+            fields_to_process = ['name', "size", "category"]
+            for field in fields_to_process:
+                value = getattr(menu, field, None)
+                if isinstance(value, str):
+                    setattr(menu, field, value.strip().lower())
 
-        fields_to_process = ['name', "size", "category"]
-        for field in fields_to_process:
-            value = getattr(menu, field, None)
-            if isinstance(value, str):
-                setattr(menu, field, value.strip().lower())
-
-        if not menu.id:
-            logging.error("Cannot edit menu item without a valid ID.")
-            return None
-        with self.Session() as session:
-            try:
-                existing = session.get(Menu, menu.id)
-                if not existing:
-                    logging.error(f"No menu item found with ID: {menu.id}")
+            if not menu.id:
+                logging.error("Cannot edit menu item without a valid ID.")
+                return None
+            with self.Session() as session:
+                try:
+                    existing = session.get(Menu, menu.id)
+                    if not existing:
+                        logging.error(f"No menu item found with ID: {menu.id}")
+                        return None
+                    merged_menu = session.merge(menu)
+                    session.commit()
+                    session.refresh(merged_menu)
+                    logging.info(f"Successfully updated inventory item with id: {menu.id}")
+                    return merged_menu
+                except Exception as e:
+                    session.rollback()
+                    logging.error(f"Failed to update inventory item with id: {menu.id}: {e}")
                     return None
-                merged_menu = session.merge(menu)
-                session.commit()
-                session.refresh(merged_menu)
-                logging.info(f"Successfully updated inventory item with id: {menu.id}")
-                return merged_menu
+        elif isinstance(menu, list):
+
+            objects = menu
+            try:
+                with self.Session() as session:
+                    updated_objects = []
+
+                    for obj in objects:
+                        fields_to_process = ['name', "size", "category"]
+                        for field in fields_to_process:
+                            value = getattr(obj, field, None)
+                            if isinstance(value, str):
+                                setattr(obj, field, value.strip().lower())
+
+
+                        if hasattr(obj, 'id') and getattr(obj, 'id', None) is not None:
+                            merged_obj = session.merge(obj)
+                            updated_objects.append(merged_obj)
+                        else:
+                            logging.warning("Object missing ID, skipping update")
+
+
+
+                    session.commit()
+
+                    for obj in updated_objects:
+                        session.refresh(obj)
+                    # Note: NO commit here - let caller handle transaction
+                    return updated_objects
+
             except Exception as e:
-                session.rollback()
-                logging.error(f"Failed to update inventory item with id: {menu.id}: {e}")
+                logging.error(f"Failed to update objects in session: {e}")
                 return None
 
     def delete_menu(self, menu: Menu) -> bool:
@@ -554,16 +597,17 @@ class DBHandler:
                  sales_forecast:Optional[int]=None,
                  estimated_indirect_costs:Optional[float]=None,
                  direct_cost:Optional[float]=None,
-                 profit:Optional[float]=None,
+                 profit_margin:Optional[float]=None,
                  estimated_price:Optional[float]=None,
                  manual_price:Optional[float]=None,
                  from_date:Optional[datetime]=None,
-                 estimated_to_date:Optional[datetime]=None,
 
+                 category:Optional[str]=None,
                  description:Optional[str]=None,
                  ) -> Optional[EstimatedMenuPriceRecord]:
         """ adding new estimate of price item """
-
+        if category is not None:
+            category = category.lower().strip()
         if sales_forecast is not None and sales_forecast < 0:
             logging.error("sales_forecast: value cant be negative")
             return None
@@ -573,8 +617,8 @@ class DBHandler:
         if direct_cost is not None and direct_cost < 0:
             logging.error("direct_cost: value cant be negative")
             return None
-        if profit is not None and profit < 0:
-            logging.warning("profit: value should not be negative")
+        if profit_margin is not None and profit_margin < 0:
+            logging.warning("profit_margin: value should not be negative")
             return None
         if estimated_price is not None and estimated_price < 0:
             logging.error("estimated_price: value cant be negative")
@@ -583,9 +627,7 @@ class DBHandler:
             logging.error("manual_price: value cant be negative")
             return None
 
-        if estimated_to_date and from_date and estimated_to_date < from_date:
-            logging.error("estimated_to_date must be after from_date")
-            return None
+
         from_date = from_date if from_date is not None else datetime.now()
         with self.Session() as session:
             try:
@@ -599,12 +641,12 @@ class DBHandler:
                     sales_forecast=sales_forecast,
                     estimated_indirect_costs=estimated_indirect_costs,
                     direct_cost=direct_cost,
-                    profit=profit,
+                    profit_margin=profit_margin,
                     estimated_price=estimated_price,
                     manual_price=manual_price,
                     from_date=from_date,
-                    estimated_to_date=estimated_to_date,
                     description=description,
+                    category=category,
                 )
                 session.add(new_record)
                 session.commit()
@@ -623,6 +665,7 @@ class DBHandler:
             from_date: Optional[datetime] = None,
             to_date: Optional[datetime] = None,
             row_num: Optional[int] = None,
+            category: Optional[str] = None,
     ) -> list[EstimatedMenuPriceRecord]:
         """Get price estimation records for menu items
 
@@ -632,10 +675,13 @@ class DBHandler:
             from_date: Optional start date for filtering records
             to_date: Optional end date for filtering records
             row_num: maximum number of records to return
+            category: category
 
         Returns:
             List of EstimatedMenuPriceRecord objects (empty list if no matches found)
         """
+        if category is not None:
+            category = category.lower().strip()
 
         with (self.Session() as session):
             try:
@@ -645,6 +691,8 @@ class DBHandler:
                     query = query.filter_by(id=id)
                 if menu_id:
                     query = query.filter_by(menu_id=menu_id)
+                if category:
+                    query = query.filter_by(category=category)
                 if from_date:
                     query = query.filter(EstimatedMenuPriceRecord.from_date >= from_date)
                 if to_date:
@@ -673,7 +721,11 @@ class DBHandler:
         Returns:
             The updated EstimatedMenuPriceRecord if successful, None on error.
         """
-
+        fields_to_process = ["category"]
+        for field in fields_to_process:
+            value = getattr(price_estimation_record, field, None)
+            if isinstance(value, str):
+                setattr(price_estimation_record, field, value.strip().lower())
 
         if not price_estimation_record.id:
             logging.error("Cannot edit inventory record without a valid ID.")
@@ -2785,11 +2837,9 @@ class DBHandler:
 
                     if from_date:
                         query = query.filter(EstimatedBills.from_date >= from_date)
-                        a = len(query.all())
 
                     if to_date:
                         query = query.filter(EstimatedBills.from_date <= to_date)
-                        b = query.all()
 
                     if row_num:
                         query = query.limit(row_num)
@@ -2887,9 +2937,9 @@ class DBHandler:
 
     def add_targetpositionandsalary(self,
                           position: str,
-                           category: str,
                           from_date: datetime,
                           to_date: datetime,
+                           category: Optional[str]=None,
                           monthly_hr: Optional[float] = None,
                           monthly_payment: Optional[float] = None,
                           monthly_insurance: Optional[float] = None,
@@ -2914,7 +2964,7 @@ class DBHandler:
             logging.error("Total amount can not be negative")
             return None
 
-        if from_date >= to_date:
+        if from_date and to_date and from_date >= to_date:
             logging.error("from date should be less than to date ")
             return None
 
@@ -2928,9 +2978,11 @@ class DBHandler:
             try:
 
                 existing_overlap = session.query(TargetPositionAndSalary).filter(
-                    TargetPositionAndSalary.position == position,
-                    TargetPositionAndSalary.from_date < to_date,
-                    TargetPositionAndSalary.to_date > from_date
+                    and_(
+                        TargetPositionAndSalary.position.is_(position),
+                        TargetPositionAndSalary.from_date < to_date,
+                        TargetPositionAndSalary.to_date > from_date
+                    )
                 ).first()
 
                 if existing_overlap:
@@ -3336,6 +3388,7 @@ class DBHandler:
                             position_id: int,
                           shift_id: int,
                           number: int,
+                           extra_hr: Time = None,
                     ) -> Optional[EstimatedLabor]:
 
         """ adding new record to db  """
@@ -3359,6 +3412,7 @@ class DBHandler:
                     position_id=position_id,
                     shift_id=shift_id,
                     number=number,
+                    extra_hr=extra_hr
                 )
                 session.add(new_one)
                 session.commit()
@@ -3375,6 +3429,7 @@ class DBHandler:
             position_id: Optional[int]=None,
             shift_id: Optional[int]=None,
             row_num: Optional[int] = None,
+            extra_hr: bool = False
     ) -> list[EstimatedLabor]:
         """Get with optional filters
         Returns:
@@ -3389,6 +3444,9 @@ class DBHandler:
 
                     if shift_id:
                         query = query.filter_by(shift_id=shift_id)
+
+                    if extra_hr:
+                        query = query.filter(EstimatedLabor.extra_hr.isnot(None))
 
                     if row_num:
                         query = query.limit(row_num)
@@ -3537,9 +3595,10 @@ class DBHandler:
             name: Optional[str] = None,
             category: Optional[str] = None,
             payer: Optional[str] = None,
-            from_date: Optional[datetime] = None,
-            to_date: Optional[datetime] = None,
-            date_expire: Optional[bool] = None,
+            purchase_from_date: Optional[datetime] = None,
+            purchase_to_date: Optional[datetime] = None,
+            expire_from_date: Optional[datetime] = None,
+            expire_to_date: Optional[datetime] = None,
             in_use: Optional[bool] = None,
             row_num: Optional[int] = None,
     ) -> list[Equipment]:
@@ -3548,7 +3607,11 @@ class DBHandler:
             List of matching Objects (empty list if no matches or no filters provided)
         """
 
-        if from_date and to_date and from_date >= to_date:
+        if purchase_from_date and purchase_to_date and purchase_from_date >= purchase_to_date:
+            logging.error("from_date should be less than to_date")
+            return []
+
+        if expire_from_date and expire_to_date and expire_from_date >= expire_to_date:
             logging.error("from_date should be less than to_date")
             return []
 
@@ -3576,18 +3639,18 @@ class DBHandler:
                     if payer:
                         query = query.filter_by(payer=payer)
 
-                    if date_expire:
-                        if from_date:
-                            query = query.filter(Equipment.expire_date >= from_date)
+                    if expire_from_date:
+                        query = query.filter(Equipment.expire_date >= expire_from_date)
 
-                        if to_date:
-                            query = query.filter(Equipment.purchase_date <= to_date)
-                    else:
-                        if from_date:
-                            query = query.filter(Equipment.purchase_date >= from_date)
+                    if expire_to_date:
+                        query = query.filter(Equipment.purchase_date <= expire_to_date)
 
-                        if to_date:
-                            query = query.filter(Equipment.purchase_date <= to_date)
+                    if purchase_from_date:
+                        query = query.filter(Equipment.purchase_date >= purchase_from_date)
+
+                    if purchase_to_date:
+                        query = query.filter(Equipment.purchase_date <= purchase_to_date)
+
 
 
                     if in_use is not None:

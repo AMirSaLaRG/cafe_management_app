@@ -56,6 +56,7 @@ class Menu(Base):
     size = Column(String, nullable=False, default='m')
     category = Column(String)
     current_price = Column(Float)
+    suggested_price = Column(Float)
     value_added_tax = Column(Float)
     serving = Column(Boolean, default=True)
     description = Column(String(500))
@@ -63,7 +64,7 @@ class Menu(Base):
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
-    recipe = relationship('Recipe', back_populates='menu_item')
+    recipe = relationship('Recipe', back_populates='menu_item', lazy="joined")
     sales = relationship("Sales", back_populates="menu_item")
     usage_record = relationship("MenuUsage", back_populates="menu_item")
     estimated_price_records = relationship("EstimatedMenuPriceRecord" , back_populates="menu_item")
@@ -80,12 +81,12 @@ class EstimatedMenuPriceRecord(Base):
     sales_forecast = Column(Integer)
     estimated_indirect_costs = Column(Float)
     direct_cost = Column(Float)
-    profit = Column(Float)
+    profit_margin = Column(Float)
 
+    category = Column(String)
     estimated_price = Column(Float)
     manual_price = Column(Float)
     from_date = Column(DateTime, nullable=False, index=True)
-    estimated_to_date = Column(DateTime)
 
     description = Column(String(500))
 
@@ -343,19 +344,20 @@ class Shift(Base):
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
-    labor = relationship("EstimatedLabor", back_populates="shift")
+    labor = relationship("EstimatedLabor", back_populates="shift", lazy="joined")
 
 class EstimatedLabor(Base):
     __tablename__ = "estimated_labor"
     position_id = Column(ForeignKey("target_position_and_salary.id"), primary_key=True)
     shift_id = Column(ForeignKey("shift.id"), primary_key=True)
     number = Column(Integer)
+    extra_hr = Column(Time)
 
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
-    position = relationship("TargetPositionAndSalary", back_populates="labor")
-    shift = relationship("Shift", back_populates="labor")
+    position = relationship("TargetPositionAndSalary", back_populates="labor", lazy="joined")
+    shift = relationship("Shift", back_populates="labor", lazy="joined")
 
 #_______________THIS TABLES HELPS TO FORECAST INDIRECT COSTS BUT THEY ARE CONSTANT MOSTLY SO HELPS RECORD AS WELL__________________________
 

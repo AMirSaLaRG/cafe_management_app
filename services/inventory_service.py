@@ -2,7 +2,7 @@ from typing import Optional
 from datetime import datetime, timedelta
 
 from models.dbhandler import DBHandler
-from models.cafe_managment_models import *
+from models.cafe_managment_models import Inventory, Menu, Recipe, InventoryStockRecord
 
 INITIATE_STOCK_CATEGORY = "Initiate Stock"
 
