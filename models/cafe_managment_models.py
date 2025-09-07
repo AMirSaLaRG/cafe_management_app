@@ -427,6 +427,8 @@ class Personal(Base):
     address = Column(String(300))
     hire_date = Column(DateTime)
     position = Column(String(250))
+    monthly_hr = Column(Float)
+    monthly_payment = Column(Float)
     active = Column(Boolean)
     description = Column(String(300))
 

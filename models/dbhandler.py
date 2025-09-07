@@ -3923,11 +3923,21 @@ class DBHandler:
                       address: Optional[str] = None,
                       hire_date: Optional[datetime] = None,
                       position: Optional[str] = None,
+                     monthly_hr: Optional[float] = None,
+                     monthly_payment: Optional[float] = None,
                       active: Optional[bool] = None,
                       description: Optional[str] = None,
                       ) -> Optional[Personal]:
 
         """ adding new record to db  """
+
+        if monthly_hr is not None and monthly_hr <0:
+            logging.error("monthhly hr of a personal cant be les than 0")
+            return None
+
+        if monthly_payment is not None and monthly_payment <0:
+            logging.error("monthhly pay ment of a personal cant be les than 0")
+            return None
 
         if first_name is not None:
             first_name = first_name.lower().strip()
@@ -3953,6 +3963,8 @@ class DBHandler:
                     address=address,
                     hire_date=hire_date,
                     position=position,
+                    monthly_hr=monthly_hr,
+                    monthly_payment=monthly_payment,
                     active=active,
                     description=description,
                 )
@@ -4051,6 +4063,7 @@ class DBHandler:
         Returns:
         The updated Personal if successful, None on error.
         """
+
         if not personal.id:
             logging.error("Cannot update personal without ID")
             return None
@@ -4060,7 +4073,14 @@ class DBHandler:
             value = getattr(personal, field, None)
             if isinstance(value, str):
                 setattr(personal, field, value.strip().lower())
-
+        monthly_hr = getattr(personal, "monthly_hr", None)
+        if monthly_hr is not None and monthly_hr <0:
+            logging.error("monthhly hr of a personal cant be les than 0")
+            return None
+        monthly_payment = getattr(personal, "monthly_payment", None)
+        if monthly_payment is not None and monthly_payment <0:
+            logging.error("monthhly pay ment of a personal cant be les than 0")
+            return None
         with self.Session() as session:
             try:
                 existing = session.get(Personal, personal.id)
