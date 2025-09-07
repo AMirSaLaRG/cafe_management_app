@@ -3232,11 +3232,10 @@ class DBHandler:
     #problem datetime time hr
     def get_shift(
             self,
-            id: Optional[int] = None,
+            id: Union[Optional[int], list[int]] = None,
             name: Optional[str] = None,
             from_date: Optional[datetime] = None,
             to_date: Optional[datetime] = None,
-            date: Optional[datetime] = None,
             from_hr: Optional[time] = None,
             to_hr: Optional[time] = None,
             row_num: Optional[int] = None,
@@ -3262,8 +3261,12 @@ class DBHandler:
         with self.Session() as session:
                 try:
                     query = session.query(Shift).order_by(Shift.date.desc())
+
                     if id:
-                        query = query.filter_by(id=id)
+                        if isinstance(id, list):
+                            query = query.filter(Shift.id.in_(id))
+                        else:
+                            query = query.filter_by(id=id)
 
                     if name:
                         query = query.filter_by(name=name)
@@ -3275,8 +3278,6 @@ class DBHandler:
                     if to_date:
                         query = query.filter(Shift.date <= to_date)
 
-                    if date:
-                        query = query.filter(Shift.date == date)
 
 
                     if from_hr and to_hr:
@@ -3931,28 +3932,28 @@ class DBHandler:
 
         """ adding new record to db  """
 
-        if monthly_hr is not None and monthly_hr <0:
-            logging.error("monthhly hr of a personal cant be les than 0")
-            return None
-
-        if monthly_payment is not None and monthly_payment <0:
-            logging.error("monthhly pay ment of a personal cant be les than 0")
-            return None
-
-        if first_name is not None:
-            first_name = first_name.lower().strip()
-
-        if last_name is not None:
-            last_name = last_name.lower().strip()
-
-        if position is not None:
-            position = position.lower().strip()
-
-        if nationality_code is not None:
-            nationality_code = nationality_code.lower().strip()
-
+     #todo put all of if and lower things inside trye catch
         with self.Session() as session:
             try:
+                if monthly_hr is not None and monthly_hr < 0:
+                    logging.error("monthhly hr of a personal cant be les than 0")
+                    return None
+
+                if monthly_payment is not None and monthly_payment < 0:
+                    logging.error("monthhly pay ment of a personal cant be les than 0")
+                    return None
+
+                if first_name is not None:
+                    first_name = first_name.lower().strip()
+
+                if last_name is not None:
+                    last_name = last_name.lower().strip()
+
+                if position is not None:
+                    position = position.lower().strip()
+
+                if nationality_code is not None:
+                    nationality_code = nationality_code.lower().strip()
 
                 new_one = Personal(
                     first_name=first_name,

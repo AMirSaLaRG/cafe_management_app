@@ -21,13 +21,13 @@ class TestShift:
             'name': 'Updated Morning Shift',
             'extra_payment': 15.0
         }
-
+        #todo to_hr to to_date and work
         crud_cycle_test(
             db_handler=in_memory_db,
             model_class=Shift,
             create_kwargs=create_kwargs,
             update_kwargs=update_kwargs,
-            lookup_fields=['name', 'date']
+            lookup_fields=['name', 'from_hr']
         )
 
     def test_shift_overlap_detection_add(self, in_memory_db):
