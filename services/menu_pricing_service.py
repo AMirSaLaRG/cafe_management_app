@@ -181,6 +181,7 @@ class MenuPriceService:
         return True
 
 
+    #_____________________________direct cost changes updates______________________________________________
 
     def calculate_update_direct_cost(self, menu_ids:list[int],
                                      category:Optional[str]=None,
@@ -208,30 +209,6 @@ class MenuPriceService:
                                                                   description=description)
 
         return True
-        #
-        # menu_item = None
-        # for id in menu_ids:
-        #     menu_get_list = self.db.get_menu(id=id)
-        #     if not menu_get_list:
-        #         return False
-        #     if not menu_get_list:
-        #         print(f"error in calculate_direct_cost for menu_id: {id}")
-        #         continue
-        #     menu_item = menu_get_list[0]
-        #
-        #     recipes_list = menu_item.recipe
-        #     new_price = 0
-        #     for recipe in recipes_list:
-        #         usage = recipe.inventory_item_amount_usage
-        #         price_unit = recipe.inventory_item.price_per_unit if recipe.inventory_item.price_per_unit else 0
-        #         new_price += usage * price_unit
-        #
-        #     self._add_new_estimated_record_update_menu_suggestion(only_menu_id=id,
-        #                                                           direct_cost=new_price,
-        #                                                           category=category,
-        #                                                           description=description)
-
-        # return True
 
 
 
@@ -266,6 +243,7 @@ class MenuPriceService:
         return False
 
 
+    #_____________________________menu manual changes updates______________________________________________
 
     def calculate_manual_price_change(self, menu_item_id, new_manual_price:float, category:Optional[str]="Manual Price Change")-> bool:
         """calculate the manual price change"""
@@ -275,8 +253,6 @@ class MenuPriceService:
             return True
         return False
 
-
-    #test
 
     #_____________________________direct cost changes updates______________________________________________
     def inventory_price_change_update_menu_item_direct_prices(self, inventory_id:int) -> bool:
@@ -291,45 +267,6 @@ class MenuPriceService:
         result = self.calculate_update_direct_cost(menu_ids=menu_recipe_ids, category="Inventory Changed", description=f"Inventory price change for {inventory_item.name}")
 
         return result
-
-
-    def get_recipe_items_of_menu_item(self, menu_id:int) -> list[Inventory]:
-        recipes = self.db.get_recipe(menu_id=menu_id)
-        inventory_items_list = [r.inventory_item for r in recipes]
-        return inventory_items_list
-
-
-    def add_recipe_of_menu_item(self, menu_id, inventory_id, amount, writer, note:Optional[str]=None) -> bool:
-        if self.db.add_recipe(inventory_id=inventory_id,
-                           menu_id=menu_id,
-                           inventory_item_amount_usage=amount,
-                           writer=writer,
-                           description=note):
-            self.calculate_update_direct_cost([menu_id], category="Recipe added")
-            return True
-        return False
-
-    def change_recipe_of_menu_item(self, menu_id, inventory_id,
-                                   amount:Optional[float]=None,
-                                   writer:Optional[str]=None,
-                                   note:Optional[str]=None) -> bool:
-        catch_recipe_list = self.db.get_recipe(menu_id=menu_id, inventory_id=inventory_id)
-        if not catch_recipe_list:
-            return False
-
-        recipe = catch_recipe_list[0]
-        if amount is not None:
-            recipe.inventory_item_amount_usage = amount
-        if writer is not None:
-            recipe.writer = writer
-        if note is not None:
-            recipe.description = note
-
-        if self.db.edit_recipe(recipe=recipe):
-            self.calculate_update_direct_cost([menu_id], category="Recipe Changed")
-            return True
-        return False
-
     # _____________________________indirect cost changes updates______________________________________________
     #IN BAKHSHE INDIRECT COST
     def labor_change_update_on_menu_price_record(self) -> bool:
@@ -358,63 +295,3 @@ class MenuPriceService:
             return True
         return False
 
-    #_____________________________menu manual changes updates______________________________________________
-
-    def add_menu_item(self, name:str,
-                      size:str,
-                      category:str,
-                      value_added_tax:float,
-                      current_price:int=None,
-                      serving:bool = True,
-                      description:str=None) -> bool:
-        new = self.db.add_menu(name=name,
-                            size=size,
-                            category=category,
-                            value_added_tax=value_added_tax,
-                            serving=serving,
-                            description=description)
-        if new :
-            if self.calculate_manual_price_change(new.id, current_price, "first added"):
-                return True
-        return False
-
-    #this should get trigger in alert
-    def change_availability_of_menu_item(self, menu_id, switch_to:Optional[bool]=None) -> bool:
-        menu_item_fetch_lsit = self.db.get_menu(id=menu_id)
-        if not menu_item_fetch_lsit:
-            return False
-        menu_item = menu_item_fetch_lsit[0]
-        if switch_to is None:
-            switch_to = not menu_item.serving
-
-        menu_item.serving = switch_to
-        if self.db.edit_menu(menu_item):
-            return True
-        return False
-
-
-    def change_attribute_menu_item(self, menu_item, name:Optional[str]=None,
-                                   size:Optional[str]=None,
-                                   category:Optional[str]=None,
-                                   value_added_tax:Optional[float]=None,
-                                   description:Optional[str]=None) -> bool:
-
-        fetch_list = self.db.get_menu(id=menu_item.id)
-        if not fetch_list:
-            return False
-        menu_item = fetch_list[0]
-
-        if name is not None:
-            menu_item.name = name
-        if size is not None:
-            menu_item.size = size
-        if category is not None:
-            menu_item.category = category
-        if value_added_tax is not None:
-            menu_item.value_added_tax = value_added_tax
-        if description is not None:
-            menu_item.description = description
-
-        if self.db.edit_menu(menu_item):
-            return True
-        return False

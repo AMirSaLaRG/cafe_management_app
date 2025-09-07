@@ -264,6 +264,8 @@ class DBHandler:
                  name:Optional[str]=None,
                  size:Optional[str]=None,
                  row_num:Optional[int]=None,
+                 category:Optional[str]=None,
+                 serving:Optional[bool]=None,
                  with_recipe:Optional[bool]=False) -> list[Menu]:
         """Get menu items with optional filters
 
@@ -277,6 +279,8 @@ class DBHandler:
         Returns:
             List of Menu objects (empty list if no matches found or error occurs)
         """
+        if category is not None:
+            category.strip().lower()
 
         with (self.Session() as session):
             try:
@@ -290,6 +294,10 @@ class DBHandler:
                 if name:
                     lookup_name = name.strip().lower()
                     query = query.filter_by(name=lookup_name)
+                if category:
+                    query = query.filter_by(category=category)
+                if serving is not None:
+                    query = query.filter_by(serving=serving)
 
                 if size:
                     lookup_size = size.strip().lower()
