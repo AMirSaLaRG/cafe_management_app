@@ -435,6 +435,22 @@ class Personal(Base):
 
     payments = relationship("RecordEmployeePayment", back_populates="personal")
     shift_record = relationship("WorkShiftRecord", back_populates="personal")
+    assignments = relationship("PersonalAssignment", back_populates="personal")
+
+
+class PersonalAssignment(Base):
+    __tablename__ = "personal_assignment"
+
+    personal_id = Column(ForeignKey("personal.id"), primary_key=True)
+    position_id = Column(ForeignKey("target_position_and_salary.id"), primary_key=True)
+    shift_id = Column(ForeignKey("shift.id"))
+    active = Column(Boolean, default=True)
+
+    time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    personal = relationship("Personal", back_populates="assignments")
+    position = relationship("TargetPositionAndSalary")
+    shift = relationship("Shift")
 
 class WorkShiftRecord(Base):
     __tablename__ = "working_shift_record"
