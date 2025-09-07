@@ -350,3 +350,239 @@ class TestMenuService:
             amount=10.0
         )
         assert result is False  # No recipe exists to change
+
+    def test_delete_nonexistent_menu_item(self, in_memory_db):
+        """Test deleting a menu item that doesn't exist"""
+        service = MenuService(in_memory_db)
+
+        # Try to delete non-existent menu item
+        result = service.delete_menu_item(99999)
+        assert result is False  # Should return False for non-existent items
+
+    def test_get_nonexistent_menu_item(self, in_memory_db):
+        """Test retrieving a menu item that doesn't exist"""
+        service = MenuService(in_memory_db)
+
+        # Try to get non-existent menu item
+        result = service.get_menu_item(99999)
+        assert result is None  # Should return None for non-existent items
+
+    def test_search_menu_items_multiple_criteria(self, in_memory_db):
+        """Test searching menu items with multiple criteria"""
+        service = MenuService(in_memory_db)
+
+        # Create test data
+        in_memory_db.add_menu(name="CofFe", size="M", category="Beverages", serving=True)
+        in_memory_db.add_menu(name="Test Tea", size="L", category="Beverages", serving=False)
+        in_memory_db.add_menu(name="Test Sandwich", size="Regular", category="Food", serving=True)
+
+        # Search with multiple criteria
+        results = service.search_menu_items(name="coffe", category="beverages", serving=True)
+        assert len(results) == 1
+        assert results[0].name == "coffe"
+
+    def test_list_all_menu_items(self, in_memory_db):
+        """Test listing all menu items"""
+        service = MenuService(in_memory_db)
+
+        # Clear any existing items
+        existing_items = service.list_menu_items()
+        for item in existing_items:
+            service.delete_menu_item(item.id)
+
+        # Add test items
+        in_memory_db.add_menu(name="Item 1", size="S", category="Test")
+        in_memory_db.add_menu(name="Item 2", size="M", category="Test")
+        in_memory_db.add_menu(name="Item 3", size="L", category="Test")
+
+        # List all items
+        results = service.list_menu_items()
+        assert len(results) == 3
+
+    def test_remove_nonexistent_recipe_item(self, in_memory_db):
+        """Test removing a recipe item that doesn't exist"""
+        service = MenuService(in_memory_db)
+
+        # Create menu and inventory items
+        menu = in_memory_db.add_menu(name="Test Menu", size="M")
+        inventory = in_memory_db.add_inventory(name="Test Inventory", unit="kg")
+
+        # Try to remove non-existent recipe
+        result = service.remove_recipe_item(menu.id, inventory.id)
+        assert result is False  # Should return False
+
+    def test_clear_recipe_empty_menu(self, in_memory_db):
+        """Test clearing recipes from a menu with no recipes"""
+        service = MenuService(in_memory_db)
+
+        # Create menu with no recipes
+        menu = in_memory_db.add_menu(name="Empty Menu", size="M")
+
+        # Clear recipes (should succeed even with no recipes)
+        result = service.clear_recipe(menu.id)
+        assert result is True
+
+    def test_clear_recipe_with_existing_recipes(self, in_memory_db):
+        """Test clearing recipes from a menu with existing recipes"""
+        service = MenuService(in_memory_db)
+
+        # Create menu and inventory
+        menu = in_memory_db.add_menu(name="Test Menu", size="M")
+        inventory1 = in_memory_db.add_inventory(name="Ingredient 1", unit="kg")
+        inventory2 = in_memory_db.add_inventory(name="Ingredient 2", unit="kg")
+
+        # Add recipes
+        in_memory_db.add_recipe(menu_id=menu.id, inventory_id=inventory1.id, inventory_item_amount_usage=10.0)
+        in_memory_db.add_recipe(menu_id=menu.id, inventory_id=inventory2.id, inventory_item_amount_usage=5.0)
+
+        # Verify recipes exist
+        recipes_before = service.get_recipe_items_of_menu_item(menu.id)
+        assert len(recipes_before) == 2
+
+        # Clear recipes
+        result = service.clear_recipe(menu.id)
+        assert result is True
+
+        # Verify recipes are gone
+        recipes_after = service.get_recipe_items_of_menu_item(menu.id)
+        assert len(recipes_after) == 0
+
+    def test_clone_menu_item_with_recipes(self, in_memory_db):
+        """Test cloning a menu item with its recipes"""
+        service = MenuService(in_memory_db)
+
+        # Create original menu item with recipes
+        menu = in_memory_db.add_menu(
+            name="Original Drink",
+            size="M",
+            category="Beverages",
+            value_added_tax=0.07,
+            current_price=5.99,
+            serving=True,
+            description="Original description"
+        )
+
+        # Add ingredients
+        ingredient1 = in_memory_db.add_inventory(name="Ingredient A", unit="kg")
+        ingredient2 = in_memory_db.add_inventory(name="Ingredient B", unit="ml")
+
+        # Add recipes
+        in_memory_db.add_recipe(
+            menu_id=menu.id,
+            inventory_id=ingredient1.id,
+            inventory_item_amount_usage=10.0,
+            writer="Chef",
+            description="Primary ingredient"
+        )
+
+        in_memory_db.add_recipe(
+            menu_id=menu.id,
+            inventory_id=ingredient2.id,
+            inventory_item_amount_usage=50.0,
+            writer="Chef",
+            description="Secondary ingredient"
+        )
+
+        # Clone the menu item
+        cloned_menu = service.clone_menu_item(menu.id, "Cloned Drink")
+        assert cloned_menu is not None
+        assert cloned_menu.name == "cloned drink"
+        assert cloned_menu.size == "m"
+        assert cloned_menu.category == "beverages"
+        assert cloned_menu.value_added_tax == 0.07
+        assert cloned_menu.description == "Original description"
+
+        # Verify recipes were copied
+        cloned_recipes = service.get_recipe_items_of_menu_item(cloned_menu.id)
+        assert len(cloned_recipes) == 2
+
+    def test_clone_nonexistent_menu_item(self, in_memory_db):
+        """Test cloning a menu item that doesn't exist"""
+        service = MenuService(in_memory_db)
+
+        result = service.clone_menu_item(99999, "New Name")
+        assert result is None  # Should return None for non-existent items
+
+    def test_edge_case_names_and_categories(self, in_memory_db):
+        """Test handling of edge cases with names and categories"""
+        service = MenuService(in_memory_db)
+
+        # Test with empty strings
+        result1 = service.add_menu_item(
+            name="",  # Empty name
+            size="M",
+            category="Test",
+            value_added_tax=0.07
+        )
+        assert result1 is False  # Should fail validation
+
+        # Test with very long names
+        long_name = "A" * 200  # Within 255 character limit
+        result2 = service.add_menu_item(
+            name=long_name,
+            size="M",
+            category="Test",
+            value_added_tax=0.07
+        )
+        assert result2 is True
+
+        # Test with special characters
+        result3 = service.add_menu_item(
+            name="Café Latte & Mocha",
+            size="M",
+            category="Beverages@Special",
+            value_added_tax=0.07
+        )
+        assert result3 is True
+
+    def test_recipe_management_comprehensive(self, in_memory_db):
+        """Comprehensive test of recipe management functionality"""
+        service = MenuService(in_memory_db)
+
+        # Setup
+        menu = in_memory_db.add_menu(name="Test Drink", size="M")
+        ingredients = []
+        for i in range(5):
+            ingredient = in_memory_db.add_inventory(name=f"Ingredient {i}", unit="kg")
+            ingredients.append(ingredient)
+
+        # Add multiple recipes
+        for i, ingredient in enumerate(ingredients):
+            result = service.add_recipe_of_menu_item(
+                menu_id=menu.id,
+                inventory_id=ingredient.id,
+                amount=(i + 1) * 10.0,  # 10, 20, 30, 40, 50
+                writer=f"Chef {i}",
+                note=f"Note {i}"
+            )
+            assert result is True
+
+        # Verify all recipes were added
+        recipe_items = service.get_recipe_items_of_menu_item(menu.id)
+        assert len(recipe_items) == 5
+
+        # Update one recipe
+        result = service.change_recipe_of_menu_item(
+            menu_id=menu.id,
+            inventory_id=ingredients[0].id,
+            amount=15.0,  # Update from 10 to 15
+            writer="Updated Chef",
+            note="Updated note"
+        )
+        assert result is True
+
+        # Remove one recipe
+        result = service.remove_recipe_item(menu.id, ingredients[1].id)
+        assert result is True
+
+        # Verify updated count
+        recipe_items = service.get_recipe_items_of_menu_item(menu.id)
+        assert len(recipe_items) == 4
+
+        # Clear all recipes
+        result = service.clear_recipe(menu.id)
+        assert result is True
+
+        # Verify all recipes are gone
+        recipe_items = service.get_recipe_items_of_menu_item(menu.id)
+        assert len(recipe_items) == 0
