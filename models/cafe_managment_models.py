@@ -345,6 +345,7 @@ class Shift(Base):
 
 
     labor = relationship("EstimatedLabor", back_populates="shift", lazy="joined")
+    assignments = relationship("PersonalAssignment", back_populates="shift", lazy="joined")
 
 class EstimatedLabor(Base):
     __tablename__ = "estimated_labor"
@@ -452,7 +453,7 @@ class PersonalAssignment(Base):
 
     personal = relationship("Personal", back_populates="assignments")
     position = relationship("TargetPositionAndSalary")
-    shift = relationship("Shift")
+    shift = relationship("Shift", back_populates="assignments")
 
 class WorkShiftRecord(Base):
     __tablename__ = "working_shift_record"
@@ -481,7 +482,9 @@ class RecordEmployeePayment(Base):
     personal_id = Column(ForeignKey("personal.id"))
     from_date = Column(DateTime)
     to_date = Column(DateTime)
+    monthly_salary = Column(Float)
     payment = Column(Float)
+    indirect_payment = Column(Float)
     insurance = Column(Float)
     work_hr = Column(Float)
     extra_hr = Column(Float)

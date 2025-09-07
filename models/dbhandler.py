@@ -4345,7 +4345,9 @@ class DBHandler:
                       personal_id: int,
                       from_date: Optional[datetime] = None,
                       to_date: Optional[datetime] = None,
+                      monthly_salary: Optional[float] = None,
                       payment: Optional[float] = None,
+                      indirect_payment: Optional[float] = None,
                       insurance: Optional[float] = None,
                       work_hr: Optional[float] = None,
                       extra_hr: Optional[float] = None,
@@ -4362,8 +4364,15 @@ class DBHandler:
         if extra_hr is not None and extra_hr < 0:
             logging.error('Value cannot be negative')
             return None
+        if monthly_salary is not None and monthly_salary < 0:
+            logging.error('Value cannot be negative')
+            return None
 
         if payment is not None and payment < 0:
+            logging.error('Value cannot be negative')
+            return None
+
+        if indirect_payment is not None and indirect_payment < 0:
             logging.error('Value cannot be negative')
             return None
 
@@ -4400,10 +4409,12 @@ class DBHandler:
                     personal_id=personal_id,
                     from_date=from_date,
                     to_date=to_date,
+                    monthly_salary=monthly_salary,
                     payment=payment ,
-                    insurance=insurance ,
-                    work_hr=work_hr ,
-                    extra_hr=extra_hr ,
+                    indirect_payment=indirect_payment,
+                    insurance=insurance,
+                    work_hr=work_hr,
+                    extra_hr=extra_hr,
                     extra_expenses=extra_expenses,
                     description=description,
 
