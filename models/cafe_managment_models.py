@@ -460,9 +460,8 @@ class WorkShiftRecord(Base):
 
     id = Column(Integer, primary_key=True)
     personal_id = Column(ForeignKey("personal.id"))
-    date = Column(DateTime)
-    start_hr = Column(Time)
-    end_hr = Column(Time)
+    from_date = Column(DateTime)
+    to_date = Column(DateTime)
     worked_hr = Column(Float)
     lunch_payed = Column(Float)
     service_payed = Column(Float)

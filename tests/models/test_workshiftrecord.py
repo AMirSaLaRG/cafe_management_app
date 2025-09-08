@@ -49,9 +49,8 @@ def test_crud_cycle_workshiftrecord(in_memory_db):
         model_class=WorkShiftRecord,
         create_kwargs=dict(
             personal_id=personal.id,
-            date=datetime(2023, 6, 1),
-            start_hr=time(9, 0),
-            end_hr=time(17, 0),
+            from_date=datetime(2023, 6, 1,9, 0),
+            to_date=datetime(2023, 6, 1,17, 0),
             worked_hr=8.0,
             lunch_payed=1.0,
             service_payed=2.0,
@@ -59,7 +58,7 @@ def test_crud_cycle_workshiftrecord(in_memory_db):
             description="Regular shift"
         ),
         update_kwargs=dict(
-            end_hr=time(18, 0),
+            to_date=datetime(2023, 6, 1,18, 0),
             worked_hr=9.0,
             description="Extended shift"
         ),
@@ -84,9 +83,8 @@ def workshift_create_data():
     now = datetime.now()
     return {
         'personal_id': 1,  # Will be set after creating personal
-        'date': datetime(now.year, now.month, now.day),
-        'start_hr': time(9, 0),
-        'end_hr': time(17, 0),
+        'from_date': datetime(now.year, now.month, now.day,9, 0),
+        'to_date': datetime(now.year, now.month, now.day,17, 0),
         'worked_hr': 8.0,
         'lunch_payed': 1.0,
         'service_payed': 0.5,
@@ -119,7 +117,7 @@ class TestWorkShiftRecord:
             create_kwargs=workshift_create_data,
             update_kwargs=workshift_update_data,
             lookup_fields=['personal_id', 'from_date'],
-            lookup_values=[personal.id, workshift_create_data['date']]
+            lookup_values=[personal.id, workshift_create_data['from_date']]
         )
 
     def test_time_validation(self, in_memory_db, personal_data, workshift_create_data):
@@ -130,8 +128,8 @@ class TestWorkShiftRecord:
         # Test start time after end time
         invalid_data = workshift_create_data.copy()
         invalid_data['personal_id'] = personal.id
-        invalid_data['start_hr'] = time(18, 0)
-        invalid_data['end_hr'] = time(9, 0)
+        invalid_data['from_date'] = datetime(2023, 6, 1,18, 0)
+        invalid_data['to_date'] = datetime(2023, 6, 1,9, 0)
 
         result = in_memory_db.add_workshiftrecord(**invalid_data)
         assert result is None
@@ -150,8 +148,8 @@ class TestWorkShiftRecord:
         # Try to create overlapping shift
         shift2_data = workshift_create_data.copy()
         shift2_data['personal_id'] = personal.id
-        shift2_data['start_hr'] = time(14, 0)
-        shift2_data['end_hr'] = time(19, 0)
+        shift2_data['from_date'] = datetime(2025, 9, 8,14, 0)
+        shift2_data['to_date'] = datetime(2025, 9, 8,19, 0)
 
         result = in_memory_db.add_workshiftrecord(**shift2_data)
         assert result is None
@@ -191,9 +189,9 @@ class TestWorkShiftRecord:
         assert result[0].personal_id == personal.id
 
         # Test get by time range
-        from_time = time(8, 0)
-        to_time = time(18, 0)
-        result = in_memory_db.get_workshiftrecord(from_hr=from_time, to_hr=to_time)
+        from_time = datetime(2025, 9, 8,8, 0)
+        to_time = datetime(2025, 9, 8,18, 0)
+        result = in_memory_db.get_workshiftrecord(from_date=from_time, to_date=to_time)
         assert len(result) == 1
 
         # Test get by date range

@@ -3388,7 +3388,7 @@ class DBHandler:
                 return False
 
 
-
+    #todo change all from_hr to_hr to from_date to_date as datetime
 
 
     #--EstimatedLabor--
@@ -3397,7 +3397,7 @@ class DBHandler:
                             position_id: int,
                           shift_id: int,
                           number: int,
-                           extra_hr: Time = None,
+                           extra_hr: time = None,
                     ) -> Optional[EstimatedLabor]:
 
         """ adding new record to db  """
@@ -3914,7 +3914,7 @@ class DBHandler:
 
 
     #--Personal--
-
+    #todo hiredate should be startdate
     def add_personal(self,
                       first_name: Optional[str] = None,
                       last_name: Optional[str] = None,
@@ -4132,16 +4132,15 @@ class DBHandler:
     #--WorkShiftRecord--
 
     def add_workshiftrecord(self,
-                      personal_id: int,
-                      date: Optional[datetime] = None,
-                      start_hr: Optional[time] = None,
-                      end_hr: Optional[time] = None,
-                      worked_hr: Optional[float] = None,
-                      lunch_payed: Optional[float] = None,
-                      service_payed: Optional[float] = None,
-                      extra_payed: Optional[float] = None,
-                      description: Optional[str] = None,
-                      ) -> Optional[WorkShiftRecord]:
+                            personal_id: int,
+                            from_date: Optional[datetime] = None,
+                            to_date: Optional[datetime] = None,
+                            worked_hr: Optional[float] = None,
+                            lunch_payed: Optional[float] = None,
+                            service_payed: Optional[float] = None,
+                            extra_payed: Optional[float] = None,
+                            description: Optional[str] = None,
+                            ) -> Optional[WorkShiftRecord]:
 
         """ adding new record to db  """
 
@@ -4161,7 +4160,7 @@ class DBHandler:
             logging.error('Value cannot be negative')
             return None
 
-        if start_hr and end_hr and start_hr > end_hr:
+        if from_date and to_date and from_date > to_date:
             logging.error("start time can not be later than end time")
             return None
 
@@ -4175,9 +4174,8 @@ class DBHandler:
 
                 over_lap = session.query(WorkShiftRecord).filter(
                     WorkShiftRecord.personal_id == personal_id,
-                    WorkShiftRecord.date == date,
-                    WorkShiftRecord.start_hr < end_hr,
-                    WorkShiftRecord.end_hr > start_hr
+                    WorkShiftRecord.from_date < to_date,
+                    WorkShiftRecord.to_date > from_date
                 ).first()
                 if over_lap:
                     logging.error("this time overlaps with other record of this person")
@@ -4185,9 +4183,8 @@ class DBHandler:
 
                 new_one = WorkShiftRecord(
                     personal_id=personal_id,
-                    date=date,
-                    start_hr=start_hr,
-                    end_hr=end_hr,
+                    from_date=from_date,
+                    to_date=to_date,
                     worked_hr=worked_hr,
                     lunch_payed=lunch_payed,
                     service_payed=service_payed,
@@ -4209,8 +4206,6 @@ class DBHandler:
             self,
             id: Optional[int] = None,
             personal_id: Optional[int] = None,
-            from_hr: Optional[time] = None,
-            to_hr: Optional[time] = None,
             from_date: Optional[datetime] = None,
             to_date: Optional[datetime] = None,
             row_num: Optional[int] = None,
@@ -4223,13 +4218,11 @@ class DBHandler:
         if from_date and to_date and from_date >= to_date:
             logging.error("from_date should be less than to_date")
             return []
-        if from_hr and to_hr and from_hr >= to_hr:
-            logging.error("from_hr should be less than to_hr")
-            return []
+
 
         with self.Session() as session:
                 try:
-                    query = session.query(WorkShiftRecord).order_by(WorkShiftRecord.date.desc())
+                    query = session.query(WorkShiftRecord).order_by(WorkShiftRecord.from_date.desc())
                     if id:
                         query = query.filter_by(id=id)
 
@@ -4237,18 +4230,11 @@ class DBHandler:
                     if personal_id:
                         query = query.filter_by(personal_id=personal_id)
 
-
-                    if from_hr:
-                        query = query.filter(WorkShiftRecord.start_hr >= from_hr)
-
-                    if to_hr:
-                        query = query.filter(WorkShiftRecord.start_hr <= to_hr)
-
                     if from_date:
-                        query = query.filter(WorkShiftRecord.date >= from_date)
+                        query = query.filter(WorkShiftRecord.from_date >= from_date)
 
                     if to_date:
-                        query = query.filter(WorkShiftRecord.date <= to_date)
+                        query = query.filter(WorkShiftRecord.from_date <= to_date)
 
                     if row_num:
                         query = query.limit(row_num)
@@ -4293,9 +4279,8 @@ class DBHandler:
                 over_lap = session.query(WorkShiftRecord).filter(
                     WorkShiftRecord.id != working_shift_record.id,
                     WorkShiftRecord.personal_id == working_shift_record.personal_id,
-                    WorkShiftRecord.date == working_shift_record.date,
-                    WorkShiftRecord.start_hr < working_shift_record.end_hr,
-                    WorkShiftRecord.end_hr > working_shift_record.start_hr
+                    WorkShiftRecord.from_date < working_shift_record.to_date,
+                    WorkShiftRecord.to_date > working_shift_record.from_date
                 ).first()
                 if over_lap:
                     logging.error("this time overlaps with other record of this person")
