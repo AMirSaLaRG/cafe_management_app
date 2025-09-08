@@ -4277,7 +4277,7 @@ class DBHandler:
                     logging.error(f"No working_shift_record found with ID: {working_shift_record.id}")
                     return None
                 over_lap = session.query(WorkShiftRecord).filter(
-                    WorkShiftRecord.id != working_shift_record.id,
+                    WorkShiftRecord.id.isnot(working_shift_record.id),
                     WorkShiftRecord.personal_id == working_shift_record.personal_id,
                     WorkShiftRecord.from_date < working_shift_record.to_date,
                     WorkShiftRecord.to_date > working_shift_record.from_date

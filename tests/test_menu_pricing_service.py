@@ -92,7 +92,7 @@ class TestMenuPricingService:
         start_date = datetime(2024, 1, 15)
         end_date = datetime(2024, 1, 17)
 
-        labor_cost = service._get_labor_cost(start_date, end_date)
+        labor_cost = service._get_estimated_labor_cost(start_date, end_date)
 
         # Each shift: 8 hours * $15/hour + $10 insurance = $120 + $10 = $130
         # 3 shifts: 3 * $130 = $390
@@ -263,7 +263,7 @@ class TestMenuPricingService:
         start_date = datetime(2024, 1, 1)
         end_date = datetime(2024, 1, 31)
 
-        labor_cost = service._get_labor_cost(start_date, end_date)
+        labor_cost = service._get_estimated_labor_cost(start_date, end_date)
 
         # Expected calculation:
         # Regular hours: 8 hours * 2 baristas = 16 hours
@@ -546,7 +546,7 @@ class TestRealWorldScenarios:
             )
 
             # Calculate costs
-            labor_cost = service._get_labor_cost(
+            labor_cost = service._get_estimated_labor_cost(
                 datetime(2024, 12, 25),
                 datetime(2024, 12, 25)
             )

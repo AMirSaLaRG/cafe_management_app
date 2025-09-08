@@ -1,8 +1,38 @@
 from typing import Optional
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from models.dbhandler import DBHandler
 from models.cafe_managment_models import *
 
+def str_to_time_object_hr_min(the_time:str):
+    the_time_object = datetime.strptime(the_time, '%H:%M').time()
+    return the_time_object
+
+
+def get_hours_diff(start_time, end_time):
+    """Calculate difference in hours as float"""
+    if not start_time or not end_time:
+        return 0.0
+
+    time_diff = end_time - start_time
+    hours_diff = time_diff.total_seconds() / 3600
+    return hours_diff
+
+def time_difference_to_float_hr(self, start:time, end:time)->float:
+    today = datetime.today().date()
+    dt_start = datetime.combine(today, start)
+    dt_end = datetime.combine(today, end)
+
+    if dt_end < dt_start:
+        dt_end += timedelta(days=1)
+
+    delta = dt_end - dt_start
+    return delta.total_seconds() / 3600
+
+def time_to_float_hr(self, time_obj: time) -> float:
+    """Convert time object to float hours"""
+    if not time_obj:
+        return 0.0
+    return time_obj.hour + time_obj.minute / 60.0 + time_obj.second / 3600.0
 
 class HRService:
     def __init__(self, db_handler: DBHandler):
@@ -111,6 +141,94 @@ class HRService:
             extra_expenses=extra_expenses,
             description=description,
         ))
+    #_________record work (recording work)___________
+    def add_work_record(self,
+                        personal_id,
+                        from_date:datetime,
+                        to_date:datetime,
+                        worked_hr:Optional[float]=None,
+                        lunch:Optional[float] = 0,
+                        service:Optional[float] = 0,
+                        extra_payment:Optional[float] = 0,
+                        description:Optional[str] = None) -> bool:
+
+        if worked_hr is None:
+            worked_hr = get_hours_diff(from_date, to_date)
+
+        return bool(self.db.add_workshiftrecord(personal_id=personal_id,
+                                    from_date=from_date,
+                                    to_date=to_date,
+                                    worked_hr=worked_hr,
+                                    lunch_payed=lunch,
+                                    service_payed=service,
+                                    extra_payed=extra_payment,
+                                    description=description))
+
+    def edit_work_record(self,
+                         record_id: int,
+                         from_date: Optional[datetime] = None,
+                         to_date: Optional[datetime] = None,
+                         worked_hr: Optional[float] = None,
+                         lunch: Optional[float] = None,
+                         service: Optional[float] = None,
+                         extra_payment: Optional[float] = None,
+                         description: Optional[str] = None) -> bool:
+
+
+        # First, get the existing record
+        records = self.db.get_workshiftrecord(id=record_id)
+        if not records:
+            return False
+
+        record = records[0]
+
+        # Calculate worked hours if both from_date and to_date are provided
+        if from_date is not None and to_date is not None:
+            if from_date > to_date:
+                return False
+            record.worked_hr = get_hours_diff(from_date, to_date)
+            record.from_date = from_date
+            record.to_date = to_date
+        elif from_date is not None:
+            record.from_date = from_date
+            if record.to_date and from_date > record.to_date:
+                return False
+            if record.to_date:
+                record.worked_hr = get_hours_diff(from_date, record.to_date)
+        elif to_date is not None:
+            record.to_date = to_date
+            if record.from_date and record.from_date > to_date:
+                return False
+            if record.from_date:
+                record.worked_hr = get_hours_diff(record.from_date, to_date)
+
+        # Update other fields if provided
+        if worked_hr is not None:
+            if worked_hr < 0:
+                return False
+            record.worked_hr = worked_hr
+
+        if lunch is not None:
+            if lunch < 0:
+                return False
+            record.lunch_payed = lunch
+
+        if service is not None:
+            if service < 0:
+                return False
+            record.service_payed = service
+
+        if extra_payment is not None:
+            if extra_payment < 0:
+                return False
+            record.extra_payed = extra_payment
+
+        if description is not None:
+            record.description = description
+
+        # Save the changes
+        updated_record = self.db.edit_workshiftrecord(record)
+        return bool(updated_record)
 
     # __________Shift assignment & schedule retrieval____
 
@@ -174,3 +292,95 @@ class HRService:
         return shifts
 
 #_______________estimate positions & salary & labor_______________________
+
+    def add_estimation_labor(self, position_ids: list[int], shift_id:int, extra_hr:str = "00:00") -> bool:
+        """Add an estimation labor"""
+
+        clean_position_ids = list(set(position_ids))
+
+        for position_id in clean_position_ids:
+            if not self.db.add_estimatedlabor(position_id=position_id,
+                                              shift_id=shift_id,
+                                              number=position_ids.count(position_id),
+                                              extra_hr=str_to_time_object_hr_min(extra_hr)):
+                return False
+
+        return True
+
+    def add_target_position(self,
+                            name:str,
+                            category:str,
+                            monthly_hr:float,
+                            monthly_payment:float,
+                            over_time_payment_hr:float,
+                            monthly_insurance:float,
+                            start_date:datetime = None,
+                            end_date:datetime = None) -> bool:
+        """Add a target position"""
+
+        year = datetime.now().year
+
+        if start_date is None:
+            if end_date:
+                year = end_date.year
+            start_date = datetime(year=year, month=1, day=1)
+            year = start_date.year
+
+        if end_date is None:
+            end_date = datetime(year=year, month=12, day=31)
+
+        return bool(self.db.add_targetpositionandsalary(position=name,
+                                            from_date=start_date,
+                                            to_date=end_date,
+                                            category=category,
+                                            monthly_hr=monthly_hr,
+                                            monthly_payment=monthly_payment,
+                                            monthly_insurance=monthly_insurance,
+                                            extra_hr_payment=over_time_payment_hr))
+
+    def update_target_position(self,
+                               position_id:int,
+                            name: Optional[str] = None,
+                            category: Optional[str] = None,
+                            monthly_hr: Optional[float] = None,
+                            monthly_payment: Optional[float] = None,
+                            over_time_payment_hr: Optional[float] = None,
+                            monthly_insurance: Optional[float] = None,
+                            start_date: Optional[datetime] = None,
+                            end_date: Optional[datetime] = None) -> bool:
+        """Add a target position"""
+
+
+        target_fetch = self.db.get_targetpositionandsalary(id=position_id)
+
+        if not target_fetch:
+            return False
+        target = target_fetch[0]
+
+        if name is not None:
+            target.position = name
+
+        if category is not None:
+            target.category = category
+
+        if monthly_hr is not None:
+            target.monthly_hr = monthly_hr
+
+        if monthly_payment is not None:
+            target.monthly_payment = monthly_payment
+
+        if over_time_payment_hr is not None:
+            target.extra_hr_payment  = over_time_payment_hr
+
+        if monthly_insurance is not None:
+            target.monthly_insurance = monthly_insurance
+
+        if start_date is not None:
+            target.from_date = start_date
+
+        if end_date is not None:
+            target.to_date = end_date
+
+        return bool(self.db.edit_targetpositionandsalary(target))
+
+#____________________indirect cost estimate____________________________

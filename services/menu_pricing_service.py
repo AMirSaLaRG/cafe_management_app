@@ -44,7 +44,7 @@ class MenuPriceService:
         return time_obj.hour + time_obj.minute / 60.0 + time_obj.second / 3600.0
 
     #todo this looks like shit
-    def _get_labor_cost(self, from_date, to_date):
+    def _get_estimated_labor_cost(self, from_date, to_date):
         """this estimates the price of labor in shifts"""
         shifts = self.db.get_shift(from_date=from_date, to_date=to_date)
         total_labor_cost = 0
@@ -231,7 +231,7 @@ class MenuPriceService:
         cost_equipment_depreciation = sum(e.monthly_depreciation for e in list_equipment_depreciation if e)
 
 
-        payment_labor = self._get_labor_cost(start_date, end_date)
+        payment_labor = self._get_estimated_labor_cost(start_date, end_date)
 
 
         indirect_price_overall = cost_rent + cost_bills + payment_labor + cost_equipment_depreciation
