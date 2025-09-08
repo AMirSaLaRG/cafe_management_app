@@ -327,7 +327,7 @@ class TargetPositionAndSalary(Base):
     labor = relationship("EstimatedLabor", back_populates="position")
 
 
-
+#todo model has problem it should be from date to date not date
 class Shift(Base):
     __tablename__ = "shift"
 
@@ -445,8 +445,8 @@ class PersonalAssignment(Base):
     __tablename__ = "personal_assignment"
 
     personal_id = Column(ForeignKey("personal.id"), primary_key=True)
-    position_id = Column(ForeignKey("target_position_and_salary.id"), primary_key=True)
-    shift_id = Column(ForeignKey("shift.id"))
+    shift_id = Column(ForeignKey("shift.id"), primary_key=True)
+    position_id = Column(ForeignKey("target_position_and_salary.id"))
     active = Column(Boolean, default=True)
 
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))

@@ -43,7 +43,7 @@ def test_personalassignment_basic_crud(in_memory_db):
 
     update_kwargs = {
         "active": False,
-        "shift_id": None  # Remove shift assignment
+        "position_id": None  # Remove position assignment
     }
 
     crud_cycle_test(
@@ -51,13 +51,13 @@ def test_personalassignment_basic_crud(in_memory_db):
         model_class=PersonalAssignment,
         create_kwargs=create_kwargs,
         update_kwargs=update_kwargs,
-        lookup_fields=['personal_id', 'position_id'],
-        lookup_values=[personal.id, position.id]
+        lookup_fields=['personal_id', 'shift_id'],  # Changed to shift_id
+        lookup_values=[personal.id, shift.id]  # Changed to shift_id
     )
 
 
-def test_personalassignment_without_shift(in_memory_db):
-    """Test creating assignment without a shift (should be allowed)"""
+def test_personalassignment_without_position(in_memory_db):
+    """Test creating assignment without a position (should be allowed)"""
     personal = in_memory_db.add_personal(
         first_name="Jane",
         last_name="Smith",
@@ -65,25 +65,23 @@ def test_personalassignment_without_shift(in_memory_db):
     )
     assert personal is not None
 
-    position = in_memory_db.add_targetpositionandsalary(
-        position="Manager",
-        category="full-time",
-        from_date=datetime(2024, 1, 1),
-        to_date=datetime(2024, 12, 31),
-        monthly_hr=160,
-        monthly_payment=3500.0
+    shift = in_memory_db.add_shift(
+        date=datetime(2024, 1, 15),
+        from_hr=time(8, 0),
+        to_hr=time(16, 0),
+        name="Morning Shift"
     )
-    assert position is not None
+    assert shift is not None
 
     assignment = in_memory_db.add_personalassignment(
         personal_id=personal.id,
-        position_id=position.id,
-        shift_id=None,  # No shift assigned
+        shift_id=shift.id,
+        position_id=None,  # No position assigned
         active=True
     )
 
     assert assignment is not None
-    assert assignment.shift_id is None
+    assert assignment.position_id is None
     assert assignment.active is True
 
 
@@ -92,12 +90,12 @@ def test_personalassignment_nonexistent_entities(in_memory_db):
     # Try with non-existent personal
     assignment1 = in_memory_db.add_personalassignment(
         personal_id=999,  # Doesn't exist
-        position_id=1,
+        shift_id=1,
         active=True
     )
     assert assignment1 is None
 
-    # Try with non-existent position
+    # Try with non-existent shift
     personal = in_memory_db.add_personal(
         first_name="Test",
         last_name="User",
@@ -107,23 +105,30 @@ def test_personalassignment_nonexistent_entities(in_memory_db):
 
     assignment2 = in_memory_db.add_personalassignment(
         personal_id=personal.id,
-        position_id=999,  # Doesn't exist
+        shift_id=999,  # Doesn't exist
         active=True
     )
     assert assignment2 is None
 
-    # Try with non-existent shift
+    # Try with non-existent position (should be allowed since position is optional)
+    shift = in_memory_db.add_shift(
+        date=datetime(2024, 1, 15),
+        from_hr=time(8, 0),
+        to_hr=time(16, 0)
+    )
+    assert shift is not None
+
     assignment3 = in_memory_db.add_personalassignment(
         personal_id=personal.id,
-        position_id=1,
-        shift_id=999,  # Doesn't exist
+        shift_id=shift.id,
+        position_id=999,  # Doesn't exist - should fail validation
         active=True
     )
-    assert assignment3 is None
+    assert assignment3 is None  # Should fail due to non-existent position
 
 
 def test_personalassignment_duplicate_prevention(in_memory_db):
-    """Test that duplicate assignments are prevented"""
+    """Test that duplicate assignments (same personal + shift) are prevented"""
     personal = in_memory_db.add_personal(
         first_name="Alice",
         last_name="Johnson",
@@ -141,18 +146,27 @@ def test_personalassignment_duplicate_prevention(in_memory_db):
     )
     assert position is not None
 
+    shift = in_memory_db.add_shift(
+        date=datetime(2024, 1, 15),
+        from_hr=time(8, 0),
+        to_hr=time(16, 0)
+    )
+    assert shift is not None
+
     # First assignment
     assignment1 = in_memory_db.add_personalassignment(
         personal_id=personal.id,
+        shift_id=shift.id,
         position_id=position.id,
         active=True
     )
     assert assignment1 is not None
 
-    # Try duplicate assignment
+    # Try duplicate assignment (same personal + shift)
     assignment2 = in_memory_db.add_personalassignment(
         personal_id=personal.id,
-        position_id=position.id,  # Same combination
+        shift_id=shift.id,  # Same combination
+        position_id=position.id,
         active=False
     )
     assert assignment2 is None  # Should fail due to duplicate
@@ -175,21 +189,21 @@ def test_personalassignment_filtering(in_memory_db):
 
     shift1 = in_memory_db.add_shift(
         date=datetime(2024, 1, 15),
-        from_hr=time(8, 0),  # Use time() constructor instead of strptime
+        from_hr=time(8, 0),
         to_hr=time(16, 0)
     )
     shift2 = in_memory_db.add_shift(
         date=datetime(2024, 1, 15),
         from_hr=time(16, 0),
-        to_hr=time(23, 59)  # Changed from "24:00" to valid time
+        to_hr=time(23, 59)
     )
 
     # Create assignments
     assignments_data = [
-        {"personal_id": personal1.id, "position_id": position1.id, "shift_id": shift1.id, "active": True},
-        {"personal_id": personal1.id, "position_id": position2.id, "shift_id": None, "active": False},
-        {"personal_id": personal2.id, "position_id": position2.id, "shift_id": shift2.id, "active": True},
-        {"personal_id": personal2.id, "position_id": position1.id, "shift_id": shift1.id, "active": False},
+        {"personal_id": personal1.id, "shift_id": shift1.id, "position_id": position1.id, "active": True},
+        {"personal_id": personal1.id, "shift_id": shift2.id, "position_id": position2.id, "active": False},
+        {"personal_id": personal2.id, "shift_id": shift2.id, "position_id": position2.id, "active": True},
+        {"personal_id": personal2.id, "shift_id": shift1.id, "position_id": position1.id, "active": False},
     ]
 
     for data in assignments_data:
@@ -215,6 +229,7 @@ def test_personalassignment_filtering(in_memory_db):
     inactive_assignments = in_memory_db.get_personalassignment(active=False)
     assert len(inactive_assignments) == 2
 
+
 def test_personalassignment_edit_validation(in_memory_db):
     """Test validation during edit operations"""
     personal = in_memory_db.add_personal(first_name="Test", last_name="User", position="Test")
@@ -222,23 +237,26 @@ def test_personalassignment_edit_validation(in_memory_db):
         position="Position1", category="test",
         from_date=datetime(2024, 1, 1), to_date=datetime(2024, 12, 31)
     )
-    position2 = in_memory_db.add_targetpositionandsalary(
-        position="Position2", category="test",
-        from_date=datetime(2024, 1, 1), to_date=datetime(2024, 12, 31)
+    shift = in_memory_db.add_shift(
+        date=datetime(2024, 1, 15),
+        from_hr=time(8, 0),
+        to_hr=time(16, 0)
     )
+    assert shift is not None
 
     # Create assignment
     assignment = in_memory_db.add_personalassignment(
         personal_id=personal.id,
+        shift_id=shift.id,
         position_id=position1.id,
         active=True
     )
     assert assignment is not None
 
-    # Try to edit with non-existent shift
-    assignment.shift_id = 999
+    # Try to edit with non-existent position
+    assignment.position_id = 999
     updated = in_memory_db.edit_personalassignment(assignment)
-    assert updated is None  # Should fail due to non-existent shift
+    assert updated is None  # Should fail due to non-existent position
 
 
 def test_personalassignment_delete(in_memory_db):
@@ -248,9 +266,16 @@ def test_personalassignment_delete(in_memory_db):
         position="TestPosition", category="test",
         from_date=datetime(2024, 1, 1), to_date=datetime(2024, 12, 31)
     )
+    shift = in_memory_db.add_shift(
+        date=datetime(2024, 1, 15),
+        from_hr=time(8, 0),
+        to_hr=time(16, 0)
+    )
+    assert shift is not None
 
     assignment = in_memory_db.add_personalassignment(
         personal_id=personal.id,
+        shift_id=shift.id,
         position_id=position.id,
         active=True
     )
@@ -259,7 +284,7 @@ def test_personalassignment_delete(in_memory_db):
     # Verify assignment exists
     assignments = in_memory_db.get_personalassignment(
         personal_id=personal.id,
-        position_id=position.id
+        shift_id=shift.id
     )
     assert len(assignments) == 1
 
@@ -270,7 +295,7 @@ def test_personalassignment_delete(in_memory_db):
     # Verify assignment is gone
     assignments = in_memory_db.get_personalassignment(
         personal_id=personal.id,
-        position_id=position.id
+        shift_id=shift.id
     )
     assert len(assignments) == 0
 
@@ -296,8 +321,8 @@ def test_personalassignment_relationships(in_memory_db):
 
     assignment = in_memory_db.add_personalassignment(
         personal_id=personal.id,
-        position_id=position.id,
         shift_id=shift.id,
+        position_id=position.id,
         active=True
     )
     assert assignment is not None
@@ -308,11 +333,9 @@ def test_personalassignment_relationships(in_memory_db):
             joinedload(PersonalAssignment.personal),
             joinedload(PersonalAssignment.position),
             joinedload(PersonalAssignment.shift)
-        ).filter_by(personal_id=personal.id, position_id=position.id).first()
+        ).filter_by(personal_id=personal.id, shift_id=shift.id).first()  # Changed to shift_id
 
         assert full_assignment is not None
         assert full_assignment.personal.first_name == "relationship"
         assert full_assignment.position.position == "tester"
         assert full_assignment.shift is not None
-
-

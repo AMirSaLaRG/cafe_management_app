@@ -1688,7 +1688,7 @@ class DBHandler:
 
                     if from_date:
                         query = query.filter(InvoicePayment.date >= from_date)
-                        
+
                     if to_date:
                         query = query.filter(InvoicePayment.date <= to_date)
 
@@ -3190,7 +3190,7 @@ class DBHandler:
 
         if from_hr >= to_hr:
             logging.error("from date should be less than to time ")
-            return None
+            # return None
 
         if name is not None:
             name = name.lower().strip()
@@ -4550,8 +4550,8 @@ class DBHandler:
     # --PersonalAssignment--
     def add_personalassignment(self,
                                personal_id: int,
-                               position_id: int,
-                               shift_id: Optional[int] = None,
+                               shift_id: int,
+                               position_id: Optional[int] = None,
                                active: Optional[bool] = True
                                ) -> Optional[PersonalAssignment]:
         """Add new personal assignment"""
@@ -4564,19 +4564,19 @@ class DBHandler:
                     return None
 
                 # Check if position exists
-                if not session.get(TargetPositionAndSalary, position_id):
-                    logging.error(f"Position ID {position_id} not found")
+                if not session.get(Shift, shift_id):
+                    logging.error(f"Position ID {shift_id} not found")
                     return None
 
                 # Check if shift exists (if provided)
-                if shift_id and not session.get(Shift, shift_id):
-                    logging.error(f"Shift ID {shift_id} not found")
+                if position_id and not session.get(TargetPositionAndSalary, position_id):
+                    logging.error(f"Shift ID {position_id} not found")
                     return None
 
                 # Check if assignment already exists
-                existing = session.get(PersonalAssignment, (personal_id, position_id))
+                existing = session.get(PersonalAssignment, (personal_id, shift_id))
                 if existing:
-                    logging.warning(f"Assignment already exists for personal {personal_id} and position {position_id}")
+                    logging.warning(f"Assignment already exists for personal {personal_id} and position {shift_id}")
                     return None
 
                 new_assignment = PersonalAssignment(
@@ -4637,28 +4637,28 @@ class DBHandler:
         """
         Updates an existing personal assignment in the database.
         """
-        if not assignment.personal_id or not assignment.position_id:
-            logging.error("Cannot edit assignment without valid personal_id and position_id")
+        if not assignment.personal_id or not assignment.shift_id:
+            logging.error("Cannot edit assignment without valid personal_id and shift_id")
             return None
 
         with self.Session() as session:
             try:
-                existing = session.get(PersonalAssignment, (assignment.personal_id, assignment.position_id))
+                existing = session.get(PersonalAssignment, (assignment.personal_id, assignment.shift_id))
                 if not existing:
                     logging.error(
-                        f"No assignment found for personal {assignment.personal_id} and position {assignment.position_id}")
+                        f"No assignment found for personal {assignment.personal_id} and position {assignment.shift_id}")
                     return None
 
                 # Check if shift exists (if being updated)
-                if assignment.shift_id and not session.get(Shift, assignment.shift_id):
-                    logging.error(f"Shift ID {assignment.shift_id} not found")
+                if assignment.position_id and not session.get(TargetPositionAndSalary, assignment.position_id):
+                    logging.error(f"TargetPositionAndSalary ID {assignment.position_id} not found")
                     return None
 
                 merged_assignment = session.merge(assignment)
                 session.commit()
                 session.refresh(merged_assignment)
                 logging.info(
-                    f"Successfully updated assignment for personal {assignment.personal_id} and position {assignment.position_id}")
+                    f"Successfully updated assignment for personal {assignment.personal_id} and position {assignment.shift_id}")
                 return merged_assignment
             except Exception as e:
                 session.rollback()
@@ -4670,22 +4670,22 @@ class DBHandler:
         Deletes a personal assignment.
         Returns True if deleted, False otherwise.
         """
-        if not assignment.personal_id or not assignment.position_id:
-            logging.error("Cannot delete assignment without valid personal_id and position_id")
+        if not assignment.personal_id or not assignment.shift_id:
+            logging.error("Cannot delete assignment without valid personal_id and shift_id")
             return False
 
         with self.Session() as session:
             try:
-                assignment_to_delete = session.get(PersonalAssignment, (assignment.personal_id, assignment.position_id))
+                assignment_to_delete = session.get(PersonalAssignment, (assignment.personal_id, assignment.shift_id))
                 if assignment_to_delete:
                     session.delete(assignment_to_delete)
                     session.commit()
                     logging.info(
-                        f"Deleted assignment for personal {assignment.personal_id} and position {assignment.position_id}")
+                        f"Deleted assignment for personal {assignment.personal_id} and shift_id {assignment.shift_id}")
                     return True
                 else:
                     logging.warning(
-                        f"Assignment not found for personal {assignment.personal_id} and position {assignment.position_id}")
+                        f"Assignment not found for personal {assignment.personal_id} and shift_id {assignment.shift_id}")
                     return False
             except Exception as e:
                 session.rollback()

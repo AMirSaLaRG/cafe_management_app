@@ -11,34 +11,34 @@ class HRService:
     #___________Personal CRUD (add/deactivate)__________
     def new_personal(self,
                      f_name: str,
-                     l_name:str,
-                     n_code:str,
-                     email:str,
-                     phone:str,
-                     address:str,
+                     l_name: str,
+                     n_code: str,
+                     email: str,
+                     phone: str,
+                     address: str,
                      position: str,
                      monthly_hr: float,
                      monthly_payment: float,
                      start_date: Optional[datetime] = None) -> bool:
         added = self.db.add_personal(first_name=f_name, last_name=l_name,
-                                      nationality_code=n_code, email=email,
-                                      phone=phone, address=address,
-                                      position=position, monthly_hr=monthly_hr,
-                                      monthly_payment=monthly_payment, hire_date=start_date, active=True)
+                                     nationality_code=n_code, email=email,
+                                     phone=phone, address=address,
+                                     position=position, monthly_hr=monthly_hr,
+                                     monthly_payment=monthly_payment, hire_date=start_date, active=True)
         return True if added else False
 
     def update_personal(self,
-                     personal_id: int,
-                     f_name: Optional[str] = None,
-                     l_name:Optional[str] = None,
-                     n_code:Optional[str] = None,
-                     email:Optional[str] = None,
-                     phone:Optional[str] = None,
-                     address:Optional[str] = None,
-                     position: Optional[str] = None,
-                     monthly_hr: Optional[float] = None,
-                     monthly_payment: Optional[float] = None,
-                     start_date: Optional[datetime] = None) -> bool:
+                        personal_id: int,
+                        f_name: Optional[str] = None,
+                        l_name: Optional[str] = None,
+                        n_code: Optional[str] = None,
+                        email: Optional[str] = None,
+                        phone: Optional[str] = None,
+                        address: Optional[str] = None,
+                        position: Optional[str] = None,
+                        monthly_hr: Optional[float] = None,
+                        monthly_payment: Optional[float] = None,
+                        start_date: Optional[datetime] = None) -> bool:
         emp_fetch = self.db.get_personal(id=personal_id)
         if emp_fetch:
             emp = emp_fetch[0]
@@ -66,8 +66,6 @@ class HRService:
         if start_date is not None:
             emp.hire_date = start_date
 
-
-
         return bool(self.db.edit_personal(emp))
 
     def deactivate_personal(self, personal_id: int, active=False) -> bool:
@@ -87,20 +85,18 @@ class HRService:
     def list_employees(self, active_only: bool = True) -> list[Personal]:
         return self.db.get_personal(active=active_only)
 
-
-
     #_________Payroll (recording payments)___________
     def record_payment(self, personal_id: int,
                        from_date: datetime,
                        to_date: datetime,
-                       monthly_salary:float,
-                       regular_worked_hr:float,
-                       direct_payed:float,
-                       insurance_payed:Optional[float],
-                       indirect_payed:Optional[float] = None,
-                       extra_worked_hr:Optional[float] = None,
-                       extra_expenses:Optional[float] = None,
-                       description:Optional[str]=None
+                       monthly_salary: float,
+                       regular_worked_hr: float,
+                       direct_payed: float,
+                       insurance_payed: Optional[float],
+                       indirect_payed: Optional[float] = None,
+                       extra_worked_hr: Optional[float] = None,
+                       extra_expenses: Optional[float] = None,
+                       description: Optional[str] = None
                        ) -> bool:
         return bool(self.db.add_recordemployeepayment(
             personal_id=personal_id,
@@ -117,18 +113,6 @@ class HRService:
         ))
 
     # __________Shift assignment & schedule retrieval____
-    def get_shift_schedule(self, personal_id: int,
-                           from_date: datetime,
-                           to_date: datetime) -> list[Shift]:
-        shift_in_that_range = self.db.get_shift(from_date=from_date,
-                                                to_date=to_date)
-        personal_shifts_assigned = []
-        for shift in shift_in_that_range:
-            if getattr(shift, "assignments", None):
-                if shift.assignments.personal_id == personal_id:
-                    personal_shifts_assigned.append(shift)
-        return personal_shifts_assigned
-
 
     def create_shift(self, date: datetime, from_hr: time, to_hr: time, name: str,
                      lunch_payment: float = 0, service_payment: float = 0,
@@ -140,13 +124,24 @@ class HRService:
             extra_payment=extra_payment, description=description
         )
 
+    def get_shift_schedule(self, personal_id: int,
+                           from_date: datetime,
+                           to_date: datetime) -> list[Shift]:
+        shift_in_that_range = self.db.get_shift(from_date=from_date,
+                                                to_date=to_date)
+        personal_shifts_assigned = []
+        for shift in shift_in_that_range:
+            if getattr(shift, "assignments", None):
+                for personal_assigned in shift.assignments:
+                    if personal_assigned.personal_id == personal_id:
+                        personal_shifts_assigned.append(shift)
+        return personal_shifts_assigned
+
     def assign_shift(self, employee_id: int, shift_id: int, position_id: int) -> bool:
         return bool(self.db.add_personalassignment(personal_id=employee_id,
                                                    shift_id=shift_id,
                                                    position_id=position_id
                                                    ))
-
-
 
     def remove_shift_assignment(self, employee_id: int, shift_id: int) -> bool:
         """Remove an employee from a shift"""
@@ -178,4 +173,4 @@ class HRService:
 
         return shifts
 
-
+#_______________estimate positions & salary & labor_______________________
