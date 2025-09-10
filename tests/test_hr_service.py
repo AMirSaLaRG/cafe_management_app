@@ -122,11 +122,11 @@ class TestHRService:
                                         to_date=datetime(2025, 2, 1),
                                         monthly_salary=0,
                                         regular_worked_hr=144,
-                                        direct_payed=10000,
-                                        insurance_payed=0,
+                                        direct_paid=10000,
+                                        insurance_paid=0,
                                         extra_worked_hr=100,
                                         extra_expenses=500000,
-                                        indirect_payed=43000,
+                                        indirect_paid=43000,
                                         description="gosale")
 
         assert test_1
@@ -336,8 +336,8 @@ class TestHRService:
                 "to_date": datetime(2024, 1, 31),
                 "monthly_salary": 20000000,
                 "regular_worked_hr": 176,
-                "direct_payed": 20000000,
-                "insurance_payed": 1000000,
+                "direct_paid": 20000000,
+                "insurance_paid": 1000000,
                 "description": "Regular January salary"
             },
             # Partial month with overtime
@@ -347,11 +347,11 @@ class TestHRService:
                 "to_date": datetime(2024, 1, 31),
                 "monthly_salary": 6000000,  # Half month
                 "regular_worked_hr": 80,
-                "direct_payed": 6000000,
-                "insurance_payed": 500000,
+                "direct_paid": 6000000,
+                "insurance_paid": 500000,
                 "extra_worked_hr": 20,
                 "extra_expenses": 500000,
-                "indirect_payed": 1000000,
+                "indirect_paid": 1000000,
                 "description": "January partial with overtime"
             },
             # Month with bonuses
@@ -361,8 +361,8 @@ class TestHRService:
                 "to_date": datetime(2024, 2, 29),
                 "monthly_salary": 20000000,
                 "regular_worked_hr": 176,
-                "direct_payed": 25000000,  # Includes bonus
-                "insurance_payed": 1000000,
+                "direct_paid": 25000000,  # Includes bonus
+                "insurance_paid": 1000000,
                 "extra_expenses": 2000000,
                 "description": "February with performance bonus"
             }
@@ -577,7 +577,7 @@ class TestHRService:
         # Verify edit
         updated_record = in_memory_db.get_workshiftrecord(id=first_record.id)[0]
         assert updated_record.worked_hr == 8.0  # Should still be 8 hours
-        assert updated_record.lunch_payed == 60000
+        assert updated_record.lunch_paid == 60000
 
     def test_target_position_management(self, in_memory_db):
         """Test comprehensive target position management"""
@@ -725,8 +725,8 @@ class TestHRService:
             to_date=datetime(2024, 1, 31),
             monthly_salary=10000000,
             regular_worked_hr=160,
-            direct_payed=10000000,
-            insurance_payed=500000
+            direct_paid=10000000,
+            insurance_paid=500000
         )
 
         # Test with invalid date range
@@ -740,8 +740,8 @@ class TestHRService:
             to_date=datetime(2024, 1, 1),
             monthly_salary=10000000,
             regular_worked_hr=160,
-            direct_payed=10000000,
-            insurance_payed=500000
+            direct_paid=10000000,
+            insurance_paid=500000
         )
 
         # Test with negative values
@@ -751,8 +751,8 @@ class TestHRService:
             to_date=datetime(2024, 1, 31),
             monthly_salary=-10000000,  # Negative salary
             regular_worked_hr=160,
-            direct_payed=10000000,
-            insurance_payed=500000
+            direct_paid=10000000,
+            insurance_paid=500000
         )
 
         # Test work record with invalid time range

@@ -1,3 +1,5 @@
+from typing import Union
+
 from sqlalchemy import Column, Integer, String, Float, Date, Boolean, ForeignKey, DateTime, TIMESTAMP, \
     Time
 from sqlalchemy.orm import declarative_base, relationship
@@ -184,8 +186,10 @@ class InvoicePayment(Base):
     __tablename__ = 'invoice_payment'
 
     id = Column(Integer, primary_key=True)
-    payed = Column(Float)
+    invoice_id = Column(ForeignKey("invoice.id"), nullable=False)
+    paid = Column(Float)
     payer = Column(String)
+    tip = Column(Float)
     method = Column(String)
     date = Column(DateTime)
     receiver = Column(String)
@@ -194,13 +198,12 @@ class InvoicePayment(Base):
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
-    invoice = relationship("Invoice", back_populates="payment")
+    invoice = relationship("Invoice", back_populates="payments", lazy='joined')
 #done
 class Invoice(Base):
     __tablename__ = 'invoice'
 
     id = Column(Integer, primary_key=True)
-    pay_id = Column(ForeignKey('invoice_payment.id'))
     saler = Column(String)
     date = Column(DateTime)
     total_price = Column(Float)
@@ -210,8 +213,8 @@ class Invoice(Base):
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
-    sales = relationship("Sales", back_populates="invoice")
-    payment = relationship("InvoicePayment", back_populates="invoice")
+    sales = relationship("Sales", back_populates="invoice", lazy="joined")
+    payments = relationship("InvoicePayment", back_populates="invoice", lazy="joined")
 
 #done
 class Sales(Base):
@@ -464,9 +467,9 @@ class WorkShiftRecord(Base):
     from_date = Column(DateTime)
     to_date = Column(DateTime)
     worked_hr = Column(Float)
-    lunch_payed = Column(Float)
-    service_payed = Column(Float)
-    extra_payed = Column(Float)
+    lunch_paid = Column(Float)
+    service_paid = Column(Float)
+    extra_paid = Column(Float)
     description = Column(String(500))
 
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))

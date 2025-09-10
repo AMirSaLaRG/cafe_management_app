@@ -121,9 +121,9 @@ class HRService:
                        to_date: datetime,
                        monthly_salary: float,
                        regular_worked_hr: float,
-                       direct_payed: float,
-                       insurance_payed: Optional[float],
-                       indirect_payed: Optional[float] = None,
+                       direct_paid: float,
+                       insurance_paid: Optional[float],
+                       indirect_paid: Optional[float] = None,
                        extra_worked_hr: Optional[float] = None,
                        extra_expenses: Optional[float] = None,
                        description: Optional[str] = None
@@ -133,9 +133,9 @@ class HRService:
             from_date=from_date,
             to_date=to_date,
             monthly_salary=monthly_salary,
-            payment=direct_payed,
-            indirect_payment=indirect_payed,
-            insurance=insurance_payed,
+            payment=direct_paid,
+            indirect_payment=indirect_paid,
+            insurance=insurance_paid,
             work_hr=regular_worked_hr,
             extra_hr=extra_worked_hr,
             extra_expenses=extra_expenses,
@@ -159,9 +159,9 @@ class HRService:
                                     from_date=from_date,
                                     to_date=to_date,
                                     worked_hr=worked_hr,
-                                    lunch_payed=lunch,
-                                    service_payed=service,
-                                    extra_payed=extra_payment,
+                                    lunch_paid=lunch,
+                                    service_paid=service,
+                                    extra_paid=extra_payment,
                                     description=description))
 
     def edit_work_record(self,
@@ -211,17 +211,17 @@ class HRService:
         if lunch is not None:
             if lunch < 0:
                 return False
-            record.lunch_payed = lunch
+            record.lunch_paid = lunch
 
         if service is not None:
             if service < 0:
                 return False
-            record.service_payed = service
+            record.service_paid = service
 
         if extra_payment is not None:
             if extra_payment < 0:
                 return False
-            record.extra_payed = extra_payment
+            record.extra_paid = extra_payment
 
         if description is not None:
             record.description = description

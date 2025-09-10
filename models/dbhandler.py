@@ -1,3 +1,4 @@
+from os.path import exists
 from typing import Optional, List, cast, Union
 
 from sqlalchemy import create_engine, and_
@@ -1598,7 +1599,9 @@ class DBHandler:
     #--InvoicePayment--
 
     def add_invoicepayment(self,
-                    payed: Optional[float] = None,
+                    invoice_id:int,
+                    paid: Optional[float] = None,
+                    tip: Optional[float] = None,
                     payer: Optional[str] = None,
                     method: Optional[str] = None,
                     date: Optional[datetime] = None,
@@ -1607,8 +1610,8 @@ class DBHandler:
                     ) -> Optional[InvoicePayment]:
 
         """ adding new invoice  payment"""
-        if payed is not None and payed <= 0:
-            logging.error("Total payed must be greater than 0.")
+        if paid is not None and paid <= 0:
+            logging.error("Total paid must be greater than 0.")
             return None
 
         if payer:
@@ -1625,11 +1628,17 @@ class DBHandler:
 
         with self.Session() as session:
             try:
+                check = session.get(Invoice, invoice_id)
+                if not check:
+                    logging.info(f"No invoice payment found with id: {invoice_id}")
+                    return None
 
 
                 new_invoice_payment = InvoicePayment(
-                    payed=payed,
+                    invoice_id=invoice_id,
+                    paid=paid,
                     payer=payer,
+                    tip=tip,
                     method=method,
                     date=date,
                     receiver=receiver,
@@ -1649,8 +1658,10 @@ class DBHandler:
     def get_invoicepayment(
             self,
             id: Optional[int] = None,
+            invoice_id:Optional[int] = None,
             payer: Optional[str] = None,
             method: Optional[str] = None,
+            tip: Optional[bool] = None,
             receiver: Optional[str] = None,
             receiver_id: Optional[str] = None,
             from_date: Optional[datetime] = None,
@@ -1671,6 +1682,16 @@ class DBHandler:
                     if id:
                         query = query.filter_by(id=id)
 
+                    if tip is not None:
+                        if tip:
+                            # Get records where tip column has any non-NULL value
+                            query = query.filter(InvoicePayment.tip.is_not(None))
+                        elif not tip:
+                            # Get records where tip column is NULL
+                            query = query.filter(InvoicePayment.tip.is_(None))
+
+                    if invoice_id:
+                        query = query.filter_by(invoice_id=invoice_id)
                     if payer:
                         payer = payer.lower().strip()
                         query = query.filter_by(payer=payer)
@@ -1773,7 +1794,6 @@ class DBHandler:
     #--Invoice--
 
     def add_invoice(self,
-                    pay_id: Optional[int] = None,
                     saler: Optional[str] = None,
                     date: Optional[datetime] = None,
                     total_price: Optional[float] = None,
@@ -1795,14 +1815,8 @@ class DBHandler:
 
         with self.Session() as session:
             try:
-                if pay_id:
-                    check = session.get(InvoicePayment, pay_id)
-                    if not check:
-                        logging.info(f"No payment found with pay id: {pay_id}")
-                        return None
 
                 new_invoice = Invoice(
-                    pay_id=pay_id,
                     saler=saler,
                     date=date,
                     total_price=total_price,
@@ -4139,9 +4153,9 @@ class DBHandler:
                             from_date: Optional[datetime] = None,
                             to_date: Optional[datetime] = None,
                             worked_hr: Optional[float] = None,
-                            lunch_payed: Optional[float] = None,
-                            service_payed: Optional[float] = None,
-                            extra_payed: Optional[float] = None,
+                            lunch_paid: Optional[float] = None,
+                            service_paid: Optional[float] = None,
+                            extra_paid: Optional[float] = None,
                             description: Optional[str] = None,
                             ) -> Optional[WorkShiftRecord]:
 
@@ -4151,15 +4165,15 @@ class DBHandler:
             logging.error('Value cannot be negative')
             return None
 
-        if lunch_payed is not None and lunch_payed < 0:
+        if lunch_paid is not None and lunch_paid < 0:
             logging.error('Value cannot be negative')
             return None
 
-        if service_payed is not None and service_payed < 0:
+        if service_paid is not None and service_paid < 0:
             logging.error('Value cannot be negative')
             return None
 
-        if extra_payed is not None and extra_payed < 0:
+        if extra_paid is not None and extra_paid < 0:
             logging.error('Value cannot be negative')
             return None
 
@@ -4189,9 +4203,9 @@ class DBHandler:
                     from_date=from_date,
                     to_date=to_date,
                     worked_hr=worked_hr,
-                    lunch_payed=lunch_payed,
-                    service_payed=service_payed,
-                    extra_payed=extra_payed,
+                    lunch_paid=lunch_paid,
+                    service_paid=service_paid,
+                    extra_paid=extra_paid,
                     description=description,
 
                 )

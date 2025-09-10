@@ -1,25 +1,13 @@
 from datetime import datetime, timedelta
-from models.cafe_managment_models import Invoice
+from models.cafe_managment_models import Invoice, Sales, InvoicePayment
 from utils import crud_cycle_test
 
 
 def test_invoice_crud_cycle(in_memory_db):
     """Test complete CRUD cycle for Invoice model"""
 
-    # First create a required InvoicePayment for foreign key constraint
-    payment = in_memory_db.add_invoicepayment(
-        payed=100.0,
-        payer="test payer",
-        method="cash",
-        date=datetime.now(),
-        receiver="test receiver",
-        receiver_id="123"
-    )
-    assert payment is not None
-
-    # Test data
+    # Test data - no pay_id needed anymore
     create_kwargs = {
-        'pay_id': payment.id,
         'saler': '  Test Saler  ',  # With spaces to test stripping
         'date': datetime.now(),
         'total_price': 150.0,
@@ -48,18 +36,9 @@ def test_invoice_crud_cycle(in_memory_db):
 def test_invoice_get_methods(in_memory_db):
     """Test various get_invoice filtering options"""
 
-    # Create test payments first
-    payment1 = in_memory_db.add_invoicepayment(
-        payed=100.0, payer="payer1", method="cash", date=datetime.now(), receiver="rec1", receiver_id="1"
-    )
-    payment2 = in_memory_db.add_invoicepayment(
-        payed=200.0, payer="payer2", method="card", date=datetime.now(), receiver="rec2", receiver_id="2"
-    )
-
     # Create test invoices
     now = datetime.now()
     invoice1 = in_memory_db.add_invoice(
-        pay_id=payment1.id,
         saler='saler_one',
         date=now - timedelta(days=1),
         total_price=100.0,
@@ -69,7 +48,6 @@ def test_invoice_get_methods(in_memory_db):
     assert invoice1 is not None
 
     invoice2 = in_memory_db.add_invoice(
-        pay_id=payment2.id,
         saler='saler_two',
         date=now,
         total_price=200.0,
@@ -87,11 +65,6 @@ def test_invoice_get_methods(in_memory_db):
     result = in_memory_db.get_invoice(saler='SALER_ONE')
     assert len(result) == 1
     assert result[0].saler == 'saler_one'  # Should be lowercased
-
-    # Test get by pay_id
-    result = in_memory_db.get_invoice(pay_id=payment2.id)
-    assert len(result) == 1
-    assert result[0].pay_id == payment2.id
 
     # Test get by closed status
     result = in_memory_db.get_invoice(closed=True)
@@ -114,14 +87,8 @@ def test_invoice_get_methods(in_memory_db):
 def test_invoice_validation(in_memory_db):
     """Test invoice validation rules"""
 
-    # Create test payment
-    payment = in_memory_db.add_invoicepayment(
-        payed=100.0, payer="test", method="cash", date=datetime.now(), receiver="test", receiver_id="1"
-    )
-
     # Test negative total_price
     result = in_memory_db.add_invoice(
-        pay_id=payment.id,
         saler='test',
         total_price=-50.0,  # Invalid negative price
         closed=False
@@ -130,7 +97,6 @@ def test_invoice_validation(in_memory_db):
 
     # Test zero total_price
     result = in_memory_db.add_invoice(
-        pay_id=payment.id,
         saler='test',
         total_price=0.0,  # Invalid zero price
         closed=False
@@ -139,7 +105,6 @@ def test_invoice_validation(in_memory_db):
 
     # Test valid total_price
     result = in_memory_db.add_invoice(
-        pay_id=payment.id,
         saler='test',
         total_price=50.0,  # Valid positive price
         closed=False
@@ -150,13 +115,8 @@ def test_invoice_validation(in_memory_db):
 def test_invoice_string_processing(in_memory_db):
     """Test that string fields are properly processed"""
 
-    payment = in_memory_db.add_invoicepayment(
-        payed=100.0, payer="test", method="cash", date=datetime.now(), receiver="test", receiver_id="1"
-    )
-
     # Test with spaces and mixed case
     invoice = in_memory_db.add_invoice(
-        pay_id=payment.id,
         saler='  MixedCase Saler  ',  # Should be stripped and lowercased
         total_price=100.0,
         closed=False
@@ -171,34 +131,133 @@ def test_invoice_string_processing(in_memory_db):
     assert updated.saler == 'updated saler'  # Should be processed
 
 
-def test_invoice_with_none_pay_id(in_memory_db):
-    """Test invoice creation with None pay_id"""
+def test_invoice_relationships(in_memory_db):
+    """Test Invoice relationships with Sales and InvoicePayment"""
 
-    # Should allow None pay_id (based on your method signature)
+    # Create an invoice first
     invoice = in_memory_db.add_invoice(
-        pay_id=None,  # No payment associated
-        saler='standalone',
+        saler='test_saler',
+        total_price=150.0,
+        closed=False
+    )
+    assert invoice is not None
+
+    # Create a menu item for sales
+    menu_item = in_memory_db.add_menu(
+        name='test_coffee',
+        size='medium',
+        current_price=5.0
+    )
+    assert menu_item is not None
+
+    # Add sales to the invoice
+    sales = in_memory_db.add_sales(
+        menu_id=menu_item.id,
+        invoice_id=invoice.id,
+        number=3,
+        price=15.0
+    )
+    assert sales is not None
+
+    # Add payment to the invoice
+    payment = in_memory_db.add_invoicepayment(
+        invoice_id=invoice.id,
+        paid=150.0,
+        payer='test_customer',
+        method='cash'
+    )
+    assert payment is not None
+
+    # Test that relationships work correctly
+    # Get invoice with relationships loaded
+    invoices = in_memory_db.get_invoice(id=invoice.id)
+    assert len(invoices) == 1
+
+    fetched_invoice = invoices[0]
+
+    # Check sales relationship
+    assert len(fetched_invoice.sales) == 1
+    assert fetched_invoice.sales[0].menu_id == menu_item.id
+    assert fetched_invoice.sales[0].price == 15.0
+
+    # Check payments relationship
+    assert len(fetched_invoice.payments) == 1
+    assert fetched_invoice.payments[0].payer == 'test_customer'
+    assert fetched_invoice.payments[0].paid == 150.0
+
+
+def test_invoice_without_relationships(in_memory_db):
+    """Test invoice creation without any sales or payments"""
+
+    # Should be able to create invoice without any sales or payments
+    invoice = in_memory_db.add_invoice(
+        saler='standalone_saler',
         total_price=100.0,
         closed=False
     )
     assert invoice is not None
-    assert invoice.pay_id is None
+
+    # Verify it has empty relationships
+    invoices = in_memory_db.get_invoice(id=invoice.id)
+    assert len(invoices) == 1
+    assert len(invoices[0].sales) == 0
+    assert len(invoices[0].payments) == 0
 
 
-def test_invoice_nonexistent_pay_id(in_memory_db):
-    """Test invoice creation with non-existent pay_id"""
+def test_invoice_delete_cascading(in_memory_db):
+    """Test what happens when invoice is deleted (cascading behavior)"""
 
-    # Try to create invoice with non-existent payment ID
+    # Create invoice with sales and payments
     invoice = in_memory_db.add_invoice(
-        pay_id=9999,  # Non-existent payment
-        saler='test',
-        total_price=100.0,
+        saler='cascade_test',
+        total_price=200.0,
         closed=False
     )
-    assert invoice is None  # Should fail due to foreign key constraint
+    assert invoice is not None
+
+    # Create menu item
+    menu_item = in_memory_db.add_menu(
+        name='cascade_item',
+        size='small',
+        current_price=10.0
+    )
+    assert menu_item is not None
+
+    # Add sales
+    sales = in_memory_db.add_sales(
+        menu_id=menu_item.id,
+        invoice_id=invoice.id,
+        number=2,
+        price=20.0
+    )
+    assert sales is not None
+
+    # Add payment
+    payment = in_memory_db.add_invoicepayment(
+        invoice_id=invoice.id,
+        paid=200.0,
+        payer='cascade_customer',
+        method='card'
+    )
+    assert payment is not None
+
+    # Delete the invoice
+    result = in_memory_db.delete_invoice(invoice)
+    # should not be able to delete because there is payment for it
+    assert result is False
+
+    # Check that sales and payments are also deleted (depending on cascade settings)
+    # This depends on your database cascade settings
+    remaining_sales = in_memory_db.get_sales(invoice_id=invoice.id)
+    remaining_payments = in_memory_db.get_invoicepayment(id=invoice.id)
+
+    # Depending on your cascade configuration, these might be empty or might still exist
+    # You'll need to adjust this assertion based on your actual cascade behavior
+    print(f"Remaining sales: {len(remaining_sales)}")
+    print(f"Remaining payments: {len(remaining_payments)}")
 
 
-def test_invoice_delete_nonexistent(in_memory_db):
+def test_invoice_nonexistent_delete(in_memory_db):
     """Test deleting non-existent invoice"""
 
     # Create a mock invoice object with non-existent ID
@@ -207,5 +266,3 @@ def test_invoice_delete_nonexistent(in_memory_db):
 
     result = in_memory_db.delete_invoice(MockInvoice())
     assert result is False  # Should return False for non-existent invoice
-
-

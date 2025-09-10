@@ -52,9 +52,9 @@ def test_crud_cycle_workshiftrecord(in_memory_db):
             from_date=datetime(2023, 6, 1,9, 0),
             to_date=datetime(2023, 6, 1,17, 0),
             worked_hr=8.0,
-            lunch_payed=1.0,
-            service_payed=2.0,
-            extra_payed=0.0,
+            lunch_paid=1.0,
+            service_paid=2.0,
+            extra_paid=0.0,
             description="Regular shift"
         ),
         update_kwargs=dict(
@@ -86,9 +86,9 @@ def workshift_create_data():
         'from_date': datetime(now.year, now.month, now.day,9, 0),
         'to_date': datetime(now.year, now.month, now.day,17, 0),
         'worked_hr': 8.0,
-        'lunch_payed': 1.0,
-        'service_payed': 0.5,
-        'extra_payed': 0.0,
+        'lunch_paid': 1.0,
+        'service_paid': 0.5,
+        'extra_paid': 0.0,
         'description': 'Regular shift'
     }
 
@@ -97,8 +97,8 @@ def workshift_create_data():
 def workshift_update_data():
     return {
         'worked_hr': 7.5,
-        'lunch_payed': 1.5,
-        'service_payed': 1.0,
+        'lunch_paid': 1.5,
+        'service_paid': 1.0,
         'description': 'Updated shift details'
     }
 
@@ -146,10 +146,11 @@ class TestWorkShiftRecord:
         assert shift1 is not None
 
         # Try to create overlapping shift
+        now = datetime.now()
         shift2_data = workshift_create_data.copy()
         shift2_data['personal_id'] = personal.id
-        shift2_data['from_date'] = datetime(2025, 9, 8,14, 0)
-        shift2_data['to_date'] = datetime(2025, 9, 8,19, 0)
+        shift2_data['from_date'] = datetime(now.year, now.month, now.day,14, 0)
+        shift2_data['to_date'] = datetime(now.year, now.month, now.day,19, 0)
 
         result = in_memory_db.add_workshiftrecord(**shift2_data)
         assert result is None
@@ -189,8 +190,9 @@ class TestWorkShiftRecord:
         assert result[0].personal_id == personal.id
 
         # Test get by time range
-        from_time = datetime(2025, 9, 8,8, 0)
-        to_time = datetime(2025, 9, 8,18, 0)
+        now = datetime.now()
+        from_time = datetime(now.year, now.month, now.day,8, 0)
+        to_time = datetime(now.year, now.month, now.day,18, 0)
         result = in_memory_db.get_workshiftrecord(from_date=from_time, to_date=to_time)
         assert len(result) == 1
 
