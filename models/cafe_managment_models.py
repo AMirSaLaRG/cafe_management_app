@@ -204,7 +204,7 @@ class Invoice(Base):
     saler = Column(String)
     date = Column(DateTime)
     total_price = Column(Float)
-    closed = Column(Boolean, nullable=False)
+    closed = Column(Boolean)
     description = Column(String(500))
 
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
@@ -217,8 +217,9 @@ class Invoice(Base):
 class Sales(Base):
     __tablename__ = 'sales'
 
-    menu_id = Column(ForeignKey("menu.id"), primary_key=True)
-    invoice_id = Column(ForeignKey('invoice.id'), primary_key=True)
+    id = Column(Integer, primary_key=True)
+    menu_id = Column(ForeignKey("menu.id"), nullable=False)
+    invoice_id = Column(ForeignKey('invoice.id'), nullable=False)
     number = Column(Integer)
     discount = Column(Float)
     price = Column(Float)
@@ -229,7 +230,7 @@ class Sales(Base):
 
 
     menu_item = relationship("Menu", back_populates="sales")
-    invoice = relationship("Invoice", back_populates="sales")
+    invoice = relationship("Invoice", back_populates="sales", lazy="joined")
 
 #done
 class Usage(Base):

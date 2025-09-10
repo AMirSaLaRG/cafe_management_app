@@ -1777,7 +1777,7 @@ class DBHandler:
                     saler: Optional[str] = None,
                     date: Optional[datetime] = None,
                     total_price: Optional[float] = None,
-                    closed: bool = False,
+                    closed: Optional[bool] = None,
                     description: Optional[str] = None,
                     ) -> Optional[Invoice]:
 
@@ -1998,6 +1998,7 @@ class DBHandler:
 
     def get_sales(
             self,
+            id: Optional[int] = None,
             menu_id: Optional[int] = None,
             invoice_id: Optional[int] = None,
             row_num: Optional[int] = None,
@@ -2013,6 +2014,8 @@ class DBHandler:
         with self.Session() as session:
                 try:
                     query = session.query(Sales).order_by(Sales.time_create.desc())
+                    if id:
+                        query = query.filter_by(id=id)
                     if menu_id:
                         query = query.filter_by(menu_id=menu_id)
                     if invoice_id:
@@ -2051,11 +2054,11 @@ class DBHandler:
 
 
 
-        if not sales.menu_id or not sales.invoice_id:
+        if not sales.menu_id or not sales.invoice_id or not sales.id:
             logging.info("No valid ids")
             return None
 
-        key = (sales.menu_id, sales.invoice_id)
+        key = sales.id
 
         with self.Session() as session:
             try:
@@ -2079,10 +2082,10 @@ class DBHandler:
         Returns True if deleted, False otherwise.
         """
 
-        if not sales.menu_id or not sales.invoice_id:
+        if not sales.menu_id or not sales.invoice_id or not sales.id:
             logging.error("Cannot delete sales record without  menu_id and invoice_id.")
             return False
-        key = (sales.menu_id, sales.invoice_id)
+        key = sales.id
 
         with self.Session() as session:
 

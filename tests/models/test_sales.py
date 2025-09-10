@@ -263,6 +263,7 @@ def test_sales_delete_nonexistent(in_memory_db):
 
     # Create a mock sales object with non-existent composite key
     class MockSales:
+        id = 999999
         menu_id = 9999
         invoice_id = 9999
 
@@ -275,6 +276,7 @@ def test_sales_edit_nonexistent(in_memory_db):
 
     # Create a mock sales object with non-existent composite key
     class MockSales:
+        id = 99999
         menu_id = 9999
         invoice_id = 9999
         number = 1
