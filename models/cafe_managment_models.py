@@ -27,8 +27,9 @@ class Inventory(Base):
 
 
     supplier = relationship("Supplier", back_populates="inventory_item", lazy="joined")
+    order_details = relationship("OrderDetail", back_populates="inventory_item")
     recipes = relationship("Recipe", back_populates="inventory_item")
-    supply_record = relationship("SupplyRecord", back_populates="inventory_item")
+    # supply_record = relationship("SupplyRecord", back_populates="inventory_item")
     usage_records = relationship("InventoryUsage", back_populates="inventory_item")
     records = relationship("InventoryStockRecord", back_populates="inventory_item")
 
@@ -134,51 +135,70 @@ class Order(Base):
     id = Column(Integer, primary_key=True)
     supplier_id = Column(ForeignKey('supplier.id'))
     date = Column(DateTime)
+    real_load_time_hr= Column(Integer)
+    total_price= Column(Float)
     buyer= Column(String, nullable=False)
     payer = Column(String)
+    status = Column(String)
     description = Column(String(500))
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
     supplier = relationship("Supplier", back_populates="orders", lazy="joined")
-    ship = relationship("Ship", back_populates="order", lazy="joined")
+    order_details = relationship("OrderDetail", back_populates="order", lazy="joined")
 
-#done
+
 class Ship(Base):
     __tablename__ = 'ship'
 
     id = Column(Integer, primary_key=True)
-    order_id = Column(ForeignKey('order.id'))
     shipper = Column(String)
+    shipper_contact = Column(String)
     price = Column(Float)
     receiver = Column(String)
     payer = Column(String)
-    date = Column(DateTime)
+    shipped_date = Column(DateTime)
+    received_date = Column(DateTime)
     description = Column(String(500))
 
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-    supply_record = relationship("SupplyRecord", back_populates="ship")
-    order = relationship("Order", back_populates="ship")
-#done
-class SupplyRecord(Base):
-    __tablename__ = "supply_record"
+    # supply_record = relationship("SupplyRecord", back_populates="ship")
+    order_details = relationship("OrderDetail", back_populates="ship", lazy="joined")
+
+#todo write crud write tests
+class OrderDetail(Base):
+    __tablename__ = 'order_detail'
 
     id = Column(Integer, primary_key=True)
-    inventory_item_id = Column(ForeignKey('inventory.id'), nullable=False)
-    ship_id = Column(ForeignKey('ship.id'), nullable=False)
-    price = Column(Float)
+    inventory_id = Column(ForeignKey('inventory.id'), nullable=False)
+    order_id = Column(ForeignKey('order.id'), nullable=False)
+    ship_id = Column(ForeignKey('ship.id'))
     box_amount = Column(Float)
     box_price = Column(Float)
     box_discount = Column(Float)
-    num_of_box = Column(Float)
+    boxes_ordered = Column(Float, nullable=False)
+    numbers_of_box_shipped = Column(Float)
+    numbers_of_box_received = Column(Float)
+    numbers_of_box_approved = Column(Float)
+    numbers_of_box_rejected = Column(Float)
     description = Column(String(500))
+
+    # Add date fields for tracking
+    expected_delivery_date = Column(DateTime)
+    actual_delivery_date = Column(DateTime)
 
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
-    inventory_item = relationship("Inventory", back_populates="supply_record")
-    ship = relationship("Ship", back_populates="supply_record", lazy="joined")
+    inventory_item = relationship("Inventory", back_populates="order_details", lazy="joined")
+    ship = relationship("Ship", back_populates="order_details", lazy="joined")
+    order = relationship("Order", back_populates="order_details", lazy="joined")
+
+
+
+
+
 #_______________THIS TABLES CAN DEDUCT ITEM FROM MY INVENTORY__________________________
 
 #done

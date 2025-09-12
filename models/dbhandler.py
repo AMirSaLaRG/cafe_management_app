@@ -1063,19 +1063,26 @@ class DBHandler:
                      date:Optional[datetime]=None,
                      buyer:Optional[str]=None,
                      payer:Optional[str]=None,
+                     real_load_time_hr:Optional[int]=None,
+                     total_price:Optional[float]=None,
+                     status:Optional[str]=None,
                      description:Optional[str]=None,
+
                  ) -> Optional[Order]:
         """ adding new supplier  """
         if date is None:
             date = datetime.now()
 
-        if buyer:
-            buyer = buyer.strip().lower()
-        if payer:
-            payer = payer.strip().lower()
-
         with self.Session() as session:
             try:
+
+                if buyer:
+                    buyer = buyer.strip().lower()
+                if status:
+                    status = status.strip().lower()
+                if payer:
+                    payer = payer.strip().lower()
+
                 if supplier_id:
                     check = session.get(Supplier, supplier_id)
                     if not check:
@@ -1088,6 +1095,9 @@ class DBHandler:
                     buyer=buyer,
                     payer=payer,
                     description=description,
+                    status=status,
+                    real_load_time_hr=real_load_time_hr,
+                    total_price=total_price
                 )
                 session.add(new_order)
                 session.commit()
@@ -1108,6 +1118,7 @@ class DBHandler:
             from_date: Optional[datetime]=None,
             to_date: Optional[datetime]=None,
             row_num: Optional[int]=None,
+            status: Optional[str]=None,
 
     ) -> list[Order]:
         """Get orders with optional filters
@@ -1120,6 +1131,7 @@ class DBHandler:
             from_date: Filter orders from this date
             to_date: Filter orders to this date
             row_num: number of data you want to get if not give back all
+            status:status
 
         Returns:
             List of matching orders (empty list if no matches or no filters provided)
@@ -1128,20 +1140,31 @@ class DBHandler:
 
         with self.Session() as session:
                 try:
-                    query = session.query(Order).order_by(Order.date.desc())
+                    if buyer:
+                        buyer = buyer.strip().lower()
+                    if status:
+                        status = status.strip().lower()
+
+                    if payer:
+                        payer = payer.strip().lower()
+
+                    if supplier:
+                        supplier = supplier.strip().lower()
+
+                    query = session.query(Order).order_by(Order.time_create.desc())
 
                     if id:
                         query = query.filter_by(id=id)
+
+                    if status:
+                        query = query.filter_by(status=status)
                     if buyer:
-                        lookup_buyer = buyer.lower().strip()
-                        query = query.filter_by(buyer=lookup_buyer)
+                        query = query.filter_by(buyer=buyer)
 
                     if payer:
-                        lookup_payer = payer.lower().strip()
-                        query = query.filter_by(payer=lookup_payer)
+                        query = query.filter_by(payer=payer)
                     if supplier:
-                        lookup_supplier = supplier.lower().strip()
-                        the_supplier = session.query(Supplier).filter_by(name = lookup_supplier).first()
+                        the_supplier = session.query(Supplier).filter_by(name = supplier).first()
                         if the_supplier:
                             supplier_id = the_supplier.id
                             query = query.filter_by(supplier_id=supplier_id)
@@ -1178,7 +1201,7 @@ class DBHandler:
             The updated supplier if successful, None on error.
         """
 
-        fields_to_process = ['buyer', "payer"]
+        fields_to_process = ['buyer', "payer", "status"]
         for field in fields_to_process:
             value = getattr(order, field, None)
             if isinstance(value, str):
@@ -1229,17 +1252,17 @@ class DBHandler:
 
     #--ship--
     def add_ship(self,
-                     order_id:int,
                      shipper:Optional[str]=None,
+                     shipper_contact:Optional[str]=None,
                      price:Optional[float]=None,
                      receiver:Optional[str]=None,
                      payer:Optional[str]=None,
-                     date:Optional[datetime]=None,
+                     shipped_date:Optional[datetime]=None,
+                     received_date:Optional[datetime]=None,
                      description:Optional[str]=None,
                  ) -> Optional[Ship]:
         """ adding new supplier  """
-        if date is None:
-            date = datetime.now()
+
         if shipper:
             shipper = shipper.strip().lower()
         if payer:
@@ -1249,19 +1272,16 @@ class DBHandler:
 
         with self.Session() as session:
             try:
-                if order_id:
-                    check = session.get(Order, order_id)
-                    if not check:
-                        logging.info(f"No order found with order id: {order_id}")
-                        return None
+
 
                 new_ship = Ship(
-                    order_id=order_id,
                     shipper=shipper,
+                    shipper_contact=shipper_contact,
                     price=price,
                     receiver=receiver,
                     payer=payer,
-                    date=date,
+                    shipped_date=shipped_date,
+                    received_date=received_date,
                     description=description,
                 )
                 session.add(new_ship)
@@ -1277,12 +1297,14 @@ class DBHandler:
     def get_ship(
             self,
             id:Optional[int]=None,
-            order_id: Optional[int] = None,
             shipper: Optional[str]=None,
+            shipper_contact: Optional[str]=None,
             receiver:Optional[str]=None,
             payer: Optional[str]=None,
-            from_date: Optional[datetime]=None,
-            to_date: Optional[datetime]=None,
+            from_date_shipped: Optional[datetime]=None,
+            to_date_shipped: Optional[datetime]=None,
+            from_date_received: Optional[datetime]=None,
+            to_date_received: Optional[datetime]=None,
             row_num: Optional[int]=None,
 
     ) -> list[Ship]:
@@ -1290,12 +1312,14 @@ class DBHandler:
 
         Args:
             id: get by id
-            order_id: filter by order id
             shipper: Filter by shipper name (case-insensitive)
+            shipper_contact: Filter by shipper_contact (case-insensitive)
             payer: Filter by payer name (case-insensitive)
             receiver: Filter by receiver name (case-insensitive)
-            from_date: Filter ships from this date
-            to_date: Filter ships to this date
+            from_date_shipped: Filter ships from this date
+            to_date_shipped: Filter ships to this date
+            from_date_received: Filter received from this date
+            to_date_received: Filter received to this date
             row_num: number of data you want to get if not give back all
 
         Returns:
@@ -1304,17 +1328,14 @@ class DBHandler:
 
         with self.Session() as session:
                 try:
-                    query = session.query(Ship).order_by(Ship.date.desc())
+                    query = session.query(Ship).order_by(Ship.shipped_date.desc())
 
                     if id:
                         query= query.filter_by(id = id)
 
-                    if order_id:
-                        check = session.get(Order, order_id)
-                        if not check:
-                            logging.info(f"No order found with order_id: {order_id}")
-                            return []
-                        query = query.filter_by(order_id=order_id)
+                    if shipper_contact:
+                        query = query.filter_by(shipper_contact=shipper_contact)
+
 
                     if shipper:
                         shipper = shipper.strip().lower()
@@ -1328,10 +1349,15 @@ class DBHandler:
                         payer = payer.strip().lower()
                         query = query.filter_by(payer=payer)
 
-                    if from_date:
-                        query = query.filter(Ship.date >= from_date)
-                    if to_date:
-                        query = query.filter(Ship.date <= to_date)
+                    if from_date_shipped:
+                        query = query.filter(Ship.shipped_date >= from_date_shipped)
+                    if to_date_shipped:
+                        query = query.filter(Ship.shipped_date <= to_date_shipped)
+
+                    if from_date_received:
+                        query = query.filter(Ship.received_date >= from_date_received)
+                    if to_date_received:
+                        query = query.filter(Ship.received_date <= to_date_received)
 
                     if row_num:
                         query = query.limit(row_num)
@@ -1406,104 +1432,145 @@ class DBHandler:
 
 
 
-    #--SupplyRecord--
+    #--orderdetail--
 
-    def add_supplyrecord(self,
-                     inventory_item_id:int,
-                     ship_id:int,
-                     price:Optional[float]=None,
+    def add_orderdetail(self,
+                     inventory_id:int,
+                     order_id:int,
+                     ship_id:Optional[int]=None,
                      box_amount:Optional[float]=None,
                      box_price:Optional[float]=None,
                      box_discount:Optional[float]=None,
-                     num_of_box:Optional[float]=None,
+                     boxes_ordered:Optional[float]=None,
+                     numbers_of_box_shipped:Optional[float]=None,
+                     numbers_of_box_received:Optional[float]=None,
+                     numbers_of_box_approved:Optional[float]=None,
+                     numbers_of_box_rejected:Optional[float]=None,
+                     expected_delivery_date:Optional[datetime]=None,
+                     actual_delivery_date:Optional[datetime]=None,
                      description:Optional[str]=None,
-                 ) -> Optional[SupplyRecord]:
-        """ adding new supplyrecord  """
-        if not ship_id or not inventory_item_id:
-            logging.error("Cannot add supplyrecord without valid ship_id or inventory_item_id")
-            return None
-
-        if price is not None and price < 0:
-            logging.error("Cannot add supplyrecord with negative price")
-            return None
-        if box_amount is not None and box_amount < 0:
-            logging.error("Cannot add supplyrecord with negative box_amount")
-            return None
-        if box_price is not None and box_price < 0:
-            logging.error("Cannot add supplyrecord with negative box_price")
-            return None
-        if box_discount is not None and box_discount < 0:
-            logging.error("Cannot add supplyrecord with negative box_discount")
-            return None
-        if num_of_box is not None and num_of_box < 0:
-            logging.error("Cannot add supplyrecord with negative num_of_box")
-            return None
-
+                 ) -> Optional[OrderDetail]:
+        """ adding new OrderDetail  """
 
         with self.Session() as session:
             try:
+
+                if box_amount is not None and box_amount<0:
+                    logging.error("Value cant be les than zero")
+                    return None
+
+                if box_price is not None and box_price<0:
+                    logging.error("Value cant be les than zero")
+                    return None
+
+                if box_discount is not None and box_discount<0:
+                    logging.error("Value cant be les than zero")
+                    return None
+
+                if boxes_ordered is not None and boxes_ordered<0:
+                    logging.error("Value cant be les than zero")
+                    return None
+
+                if numbers_of_box_shipped is not None and numbers_of_box_shipped<0:
+                    logging.error("Value cant be les than zero")
+                    return None
+
+                if numbers_of_box_received is not None and numbers_of_box_received<0:
+                    logging.error("Value cant be les than zero")
+                    return None
+
+
+                if numbers_of_box_approved is not None and numbers_of_box_approved<0:
+                    logging.error("Value cant be les than zero")
+                    return None
+
+                if numbers_of_box_rejected is not None and numbers_of_box_rejected<0:
+                    logging.error("Value cant be les than zero")
+                    return None
+
+                if order_id:
+                    check = session.get(Order, order_id)
+                    if not check:
+                        logging.info(f"No order found with order id: {order_id}")
+                        return None
+
                 if ship_id:
                     check = session.get(Ship, ship_id)
                     if not check:
                         logging.info(f"No ship found with ship id: {ship_id}")
                         return None
-                if inventory_item_id:
-                    check = session.get(Inventory, inventory_item_id)
+
+                if inventory_id:
+                    check = session.get(Inventory, inventory_id)
                     if not check:
-                        logging.info(f"No inventory item found with order id: {inventory_item_id}")
+                        logging.info(f"No item found with inventory id: {inventory_id}")
                         return None
 
-                new_supply_record = SupplyRecord(
-                    inventory_item_id=inventory_item_id,
+                new_detail = OrderDetail(
+                    inventory_id=inventory_id,
+                    order_id=order_id,
                     ship_id=ship_id,
-                    price=price,
                     box_amount=box_amount,
                     box_price=box_price,
                     box_discount=box_discount,
-                    num_of_box=num_of_box,
-                    description=description
+                    boxes_ordered=boxes_ordered,
+                    numbers_of_box_shipped=numbers_of_box_shipped,
+                    numbers_of_box_received=numbers_of_box_received,
+                    numbers_of_box_approved=numbers_of_box_approved,
+                    numbers_of_box_rejected=numbers_of_box_rejected,
+                    expected_delivery_date=expected_delivery_date,
+                    actual_delivery_date=actual_delivery_date,
+                    description=description,
                 )
-                session.add(new_supply_record)
+                session.add(new_detail)
                 session.commit()
-                session.refresh(new_supply_record)
-                logging.info("supply record added successfully")
-                return new_supply_record
+                session.refresh(new_detail)
+                logging.info("new_detail added successfully")
+                return new_detail
             except Exception as e:
                 session.rollback()
-                logging.error(f"Failed to add supply record to the database: {e}")
+                logging.error(f"Failed to add new_detail to the database: {e}")
                 return None
 
-    def get_supplyrecord(
+    def get_orderdetail(
             self,
-            id:Optional[int] = None,
-            inventory_item_id: Optional[int] = None,
-            ship_id: Optional[int] = None,
-            row_num: Optional[int]=None,
+            id:Optional[int]=None,
+            inventory_id:Optional[int]=None,
+            order_id:Optional[int]=None,
+            ship_id:Optional[int]=None,
+            has_reject: bool=False,
+            row_num: Optional[int] = None
 
-    ) -> list[SupplyRecord]:
-        """Get supply record with optional filters
+    ) -> list[OrderDetail]:
+        """Get orderdetail with optional filters
 
         Args:
-            id: filter by record id
-            inventory_item_id: filter by inventory id
-            ship_id: filter by ship id
-            row_num: number of data you want to get if not give back all
+            id: get by id
+            order_id: filter by order id
+            inventory_id: filter by inventory_id
+            ship_id: filter by ship_id
+            has_reject: filter by has_reject
+            row_num: row number
 
         Returns:
-            List of matching supply records (empty list if no matches or no filters provided)
+            List of matching orderdetail (empty list if no matches or no filters provided)
         """
+
         with self.Session() as session:
                 try:
-                    query = session.query(SupplyRecord).order_by(SupplyRecord.time_create.desc())
+
+
+                    query = session.query(OrderDetail).order_by(OrderDetail.time_create.desc())
 
                     if id:
-                        query = query.filter_by(id=id)
-                    if inventory_item_id:
-                        check = session.get(Inventory, inventory_item_id)
+                        query= query.filter_by(id = id)
+
+                    if order_id:
+                        check = session.get(Order, order_id)
                         if not check:
-                            logging.info(f"No item in inventory with inventory_item_id: {inventory_item_id}")
+                            logging.info(f"No order found with order_id: {order_id}")
                             return []
-                        query = query.filter_by(inventory_item_id=inventory_item_id)
+                        query = query.filter_by(order_id=order_id)
 
                     if ship_id:
                         check = session.get(Ship, ship_id)
@@ -1512,85 +1579,87 @@ class DBHandler:
                             return []
                         query = query.filter_by(ship_id=ship_id)
 
+                    if inventory_id:
+                        check = session.get(Inventory, inventory_id)
+                        if not check:
+                            logging.info(f"No item found with inventory_id: {inventory_id}")
+                            return []
+                        query = query.filter_by(inventory_id=inventory_id)
+
+                    if has_reject:
+                        query = query.filter(OrderDetail.numbers_of_box_rejected.isnot(None))
+
                     if row_num:
                         query = query.limit(row_num)
 
                     result = query.all()
-                    logging.info(f"Found {len(result)} supply records")
+                    logging.info(f"Found {len(result)} details")
 
-                    return cast(List[SupplyRecord], result)
-
+                    return cast(List[OrderDetail], result)
                 except Exception as e:
                     session.rollback()
-                    logging.error(f"Error fetching supply records: {str(e)}")
+                    logging.error(f"Error fetching orderdetail: {str(e)}")
                     return []
 
-
-    def edit_supplyrecord(self, supply_record:SupplyRecord) -> Optional[SupplyRecord]:
+    def edit_orderdetail(self, detail:OrderDetail) -> Optional[OrderDetail]:
         """
-        Updates an existing supply record in the database.
+        Updates an existing OrderDetail in the database.
 
         Args:
-            supply_record: The SupplyRecord object with updated values.
-                         Must have valid id.
+            detail: The OrderDetail object with updated values.
+                             Must have valid id for existing Ship.
 
         Returns:
-            The updated SupplyRecord if successful, None on error.
+            The updated OrderDetail if successful, None on error.
         """
+        fields_to_process = ['shipper', "receiver", "payer"]
 
-
-
-        if not supply_record.id:
-            logging.info("No supply record id")
+        if not detail.id:
+            logging.error("Cannot edit ship without a valid ID.")
             return None
-        if not supply_record.inventory_item_id or not supply_record.ship_id:
-            logging.error("Cannot edit supply record without inventory item id and ship id.")
+        if not detail.inventory_id:
+            logging.error("Cannot edit ship without a valid inventory_id.")
+            return None
+        if not detail.order_id:
+            logging.error("Cannot edit ship without a valid order_id.")
             return None
         with self.Session() as session:
             try:
-                existing = session.get(SupplyRecord, supply_record.id)
+                existing = session.get(OrderDetail, detail.id)
                 if not existing:
-                    logging.info(f"No supply record found with ID: {supply_record.id} ")
+                    logging.info(f"No ship found with ID: {detail.id} ")
                     return None
-                merged_supply_record  = session.merge(supply_record)
+                merged_detail  = session.merge(detail)
                 session.commit()
-                session.refresh(merged_supply_record )
-                logging.info(f"Successfully updated supply record with ids: {supply_record.id}")
-                return merged_supply_record
+                session.refresh(merged_detail )
+                logging.info(f"Successfully updated detail with ids: {detail.id}")
+                return merged_detail
             except Exception as e:
                 session.rollback()
-                logging.error(f"Failed to update supply record with ids: {supply_record.id}: {e}")
+                logging.error(f"Failed to update detail with ids: {detail.id}: {e}")
                 return None
 
-    def delete_supplyrecord(self, supply_record:SupplyRecord) -> bool:
+    def delete_orderdetail(self, detail:OrderDetail) -> bool:
         """
-        Deletes a supply record.
+        Deletes a OrderDetail .
         Returns True if deleted, False otherwise.
         """
 
-        if not supply_record.id:
-            logging.error("Cannot delete supply record without id.")
-            return False
-
-        if not supply_record.inventory_item_id or not supply_record.ship_id:
-            logging.error("Cannot edit supply record without id.")
-            return False
-
         with self.Session() as session:
 
             try:
-                the_supply_record = session.get(SupplyRecord, supply_record.id)
-                if the_supply_record:
-                    session.delete(the_supply_record)
+                the_ship = session.get(OrderDetail, detail.id)
+                if the_ship:
+                    session.delete(the_ship)
                     session.commit()
-                    logging.info(f"Deleted supply record with id: {supply_record.id}")
+                    logging.info(f"Deleted OrderDetail with id: {detail.id}")
                     return True
                 else:
-                    logging.warning(f"supply record with id {supply_record.id} not found for deletion.")
+                    logging.warning(f"OrderDetail with ids {detail.id} not found for deletion.")
                     return False
             except Exception as e:
                 session.rollback()
-                logging.error(f"Failed to delete supply record {supply_record.id}: {e}")
+                logging.error(f"Failed to delete OrderDetail {detail.id}: {e}")
                 return False
 
 
