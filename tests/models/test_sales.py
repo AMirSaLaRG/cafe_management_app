@@ -1,6 +1,6 @@
 import pytest
 from datetime import datetime
-from models.cafe_managment_models import Sales
+from models.cafe_managment_models import Sales, Invoice, InvoicePayment, Menu
 from utils import crud_cycle_test
 
 
@@ -18,20 +18,8 @@ def setup_test_data(in_memory_db):
     )
     assert menu is not None
 
-    # Create an invoice payment
-    payment = in_memory_db.add_invoicepayment(
-        payed=100.0,
-        payer='test_customer',
-        method='cash',
-        date=datetime.now(),
-        receiver='test_cafe',
-        receiver_id='CAFE001'
-    )
-    assert payment is not None
-
-    # Create an invoice
+    # Create an invoice first
     invoice = in_memory_db.add_invoice(
-        pay_id=payment.id,
         saler='test_cashier',
         date=datetime.now(),
         total_price=50.0,
@@ -39,6 +27,18 @@ def setup_test_data(in_memory_db):
         description='Test invoice'
     )
     assert invoice is not None
+
+    # Create an invoice payment linked to the invoice
+    payment = in_memory_db.add_invoicepayment(
+        invoice_id=invoice.id,
+        paid=50.0,
+        payer='test_customer',
+        method='cash',
+        date=datetime.now(),
+        receiver='test_cafe',
+        receiver_id='CAFE001'
+    )
+    assert payment is not None
 
     return {
         'menu_id': menu.id,
@@ -69,14 +69,14 @@ def test_sales_crud_cycle(in_memory_db, setup_test_data):
         'description': 'Updated sale of 3 coffees'
     }
 
-    # Run CRUD cycle test - Sales uses composite key, so we need both IDs for lookup
+    # Run CRUD cycle test - Sales now uses simple id primary key
     crud_cycle_test(
         db_handler=in_memory_db,
         model_class=Sales,
         create_kwargs=create_kwargs,
         update_kwargs=update_kwargs,
-        lookup_fields=['menu_id', 'invoice_id'],  # Composite key lookup
-        lookup_values=[setup_test_data['menu_id'], setup_test_data['invoice_id']]
+        lookup_fields=['id'],  # Simple id lookup
+        lookup_values=None  # Will be set by the created object
     )
 
 
@@ -95,16 +95,7 @@ def test_sales_get_methods(in_memory_db, setup_test_data):
     assert sale1 is not None
 
     # Create another invoice and sale for different filtering
-    payment2 = in_memory_db.add_invoicepayment(
-        payed=50.0,
-        payer='customer2',
-        method='card',
-        date=datetime.now(),
-        receiver='test_cafe',
-        receiver_id='CAFE001'
-    )
     invoice2 = in_memory_db.add_invoice(
-        pay_id=payment2.id,
         saler='cashier2',
         date=datetime.now(),
         total_price=25.0,
@@ -130,14 +121,10 @@ def test_sales_get_methods(in_memory_db, setup_test_data):
     assert len(result) == 1
     assert result[0].invoice_id == setup_test_data['invoice_id']
 
-    # Test get by both menu_id and invoice_id
-    result = in_memory_db.get_sales(
-        menu_id=setup_test_data['menu_id'],
-        invoice_id=setup_test_data['invoice_id']
-    )
+    # Test get by id
+    result = in_memory_db.get_sales(id=sale1.id)
     assert len(result) == 1
-    assert result[0].menu_id == setup_test_data['menu_id']
-    assert result[0].invoice_id == setup_test_data['invoice_id']
+    assert result[0].id == sale1.id
 
     # Test row_num limit
     result = in_memory_db.get_sales(row_num=1)
@@ -226,8 +213,8 @@ def test_sales_foreign_key_validation(in_memory_db, setup_test_data):
     assert result is not None
 
 
-def test_sales_composite_key_operations(in_memory_db, setup_test_data):
-    """Test operations with composite primary key"""
+def test_sales_simple_key_operations(in_memory_db, setup_test_data):
+    """Test operations with simple primary key"""
 
     # Create a sale
     sale = in_memory_db.add_sales(
@@ -238,7 +225,7 @@ def test_sales_composite_key_operations(in_memory_db, setup_test_data):
     )
     assert sale is not None
 
-    # Test edit with composite key
+    # Test edit with simple key
     sale.number = 2
     sale.price = 11.98
     updated = in_memory_db.edit_sales(sale)
@@ -246,22 +233,19 @@ def test_sales_composite_key_operations(in_memory_db, setup_test_data):
     assert updated.number == 2
     assert updated.price == 11.98
 
-    # Test delete with composite key
+    # Test delete with simple key
     result = in_memory_db.delete_sales(sale)
     assert result is True
 
     # Verify deletion
-    result = in_memory_db.get_sales(
-        menu_id=setup_test_data['menu_id'],
-        invoice_id=setup_test_data['invoice_id']
-    )
+    result = in_memory_db.get_sales(id=sale.id)
     assert len(result) == 0
 
 
 def test_sales_delete_nonexistent(in_memory_db):
     """Test deleting non-existent sales record"""
 
-    # Create a mock sales object with non-existent composite key
+    # Create a mock sales object with non-existent id
     class MockSales:
         id = 999999
         menu_id = 9999
@@ -274,7 +258,7 @@ def test_sales_delete_nonexistent(in_memory_db):
 def test_sales_edit_nonexistent(in_memory_db):
     """Test editing non-existent sales record"""
 
-    # Create a mock sales object with non-existent composite key
+    # Create a mock sales object with non-existent id
     class MockSales:
         id = 99999
         menu_id = 9999
@@ -300,3 +284,39 @@ def test_sales_without_optional_fields(in_memory_db, setup_test_data):
     assert sale is not None
     assert sale.discount is None
     assert sale.description is None
+
+
+def test_sales_invoice_relationship(in_memory_db, setup_test_data):
+    """Test that sales are properly linked to invoices"""
+
+    # Create a sale
+    sale = in_memory_db.add_sales(
+        menu_id=setup_test_data['menu_id'],
+        invoice_id=setup_test_data['invoice_id'],
+        number=2,
+        price=11.98
+    )
+    assert sale is not None
+
+    # Verify the relationship
+    invoice = in_memory_db.get_invoice(id=setup_test_data['invoice_id'])
+    assert len(invoice) == 1
+    assert invoice[0].id == setup_test_data['invoice_id']
+
+
+def test_sales_menu_relationship(in_memory_db, setup_test_data):
+    """Test that sales are properly linked to menu items"""
+
+    # Create a sale
+    sale = in_memory_db.add_sales(
+        menu_id=setup_test_data['menu_id'],
+        invoice_id=setup_test_data['invoice_id'],
+        number=1,
+        price=5.99
+    )
+    assert sale is not None
+
+    # Verify the relationship
+    menu = in_memory_db.get_menu(id=setup_test_data['menu_id'])
+    assert len(menu) == 1
+    assert menu[0].id == setup_test_data['menu_id']
