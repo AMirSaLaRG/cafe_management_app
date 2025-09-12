@@ -926,11 +926,11 @@ class DBHandler:
                 logging.error(f"Failed to delete recipe {(recipe.inventory_id, recipe.menu_id)}: {e}")
                 return False
 
-
+    #todo load time to time what if it get in 4 hr
     #--Supplier--
     def add_supplier(self,
                  name:str,
-                 load_time_days:Optional[int]=None,
+                 load_time_hr:Optional[int]=None,
                  contact_channel:Optional[str]=None,
                  contact_address:Optional[str]=None,
                  ) -> Optional[Supplier]:
@@ -941,7 +941,7 @@ class DBHandler:
         if contact_channel:
             contact_channel = contact_channel.strip().lower()
 
-        if load_time_days is not None and load_time_days < 0 :
+        if load_time_hr is not None and load_time_hr < 0 :
             logging.error("load time cant be negative")
             return None
 
@@ -951,7 +951,7 @@ class DBHandler:
                     name=name,
                     contact_channel=contact_channel,
                     contact_address=contact_address,
-                    load_time_days=load_time_days,
+                    load_time_hr=load_time_hr,
                 )
                 session.add(supplier)
                 session.commit()
@@ -1013,7 +1013,7 @@ class DBHandler:
         if not supplier.id:
             logging.error("Cannot edit supplier without a valid ID.")
             return None
-        if getattr(supplier, "load_time_days", None) is not None and getattr(supplier, "load_time_days", None)<0:
+        if getattr(supplier, "load_time_hr", None) is not None and getattr(supplier, "load_time_hr", None)<0:
             logging.error("Cannot edit supplier without a load time days.")
             return None
         with self.Session() as session:

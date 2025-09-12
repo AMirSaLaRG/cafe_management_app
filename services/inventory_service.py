@@ -272,9 +272,11 @@ class InventoryService:
                 current_stock = inventory_item.current_stock or 0
                 safety_stock = inventory_item.safety_stock or 0
                 the_supplier = inventory_item.supplier
-                load_time_day = the_supplier.load_time_days or 0
+                load_time_hr = the_supplier.load_time_hr or 0
                 daily_usage = inventory_item.daily_usage or 0
 
+                load_time_day = load_time_hr / 24
+                load_time_day = round(load_time_day) + 1
                 threshold = safety_stock + (load_time_day * daily_usage)
                 if current_stock <= threshold:
                     alert_dict[inventory_item.name] = current_stock

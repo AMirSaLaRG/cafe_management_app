@@ -7,8 +7,8 @@ import pytest
 
 @pytest.fixture
 def setup_menu_inventory(in_memory_db):
-    sup1 = in_memory_db.add_supplier('Supplier 1', load_time_days=1)
-    sup2 = in_memory_db.add_supplier('Supplier 2', load_time_days=2)
+    sup1 = in_memory_db.add_supplier('Supplier 1', load_time_hr=1)
+    sup2 = in_memory_db.add_supplier('Supplier 2', load_time_hr=2)
     menu = in_memory_db.add_menu(name='latte', size='L')
     menu2 = in_memory_db.add_menu(name='monster', size='L')
     inv1 = in_memory_db.add_inventory(name='coffee', unit='gr',  safety_stock=50, daily_usage=50, current_supplier=sup1.id)
