@@ -1,14 +1,7 @@
 #:kivy 2.3.1
 
-<MainPage>:
-    # Background canvas
-    canvas.before:
-        Color:
-            rgba: 1, 1, 1, 1  # White background (adjust if needed)
-        Rectangle:
-            source: 'assets/bg.jpg'
-            pos: self.pos
-            size: self.size
+<MenuPage>:
+
 
     MDCard:
         size_hint: None, None
@@ -24,11 +17,48 @@
         padding: 20
         spacing: 10
 
-        Label:
+        MDLabel:
             text: 'Welcome to My Caffe App'
-            font_size: 24
-            size_hint_y: 0.3
-            color: 0.2, 0.4, 0.6, 0.7
+            font_style: 'H5'
+            halign: 'center'
+            size_hint_y: None
+            height: self.texture_size[1]
+            theme_text_color: 'Custom'
+            text_color: 0.2, 0.4, 0.6, 0.7
+
+
+
+        MDRaisedButton:
+            text: 'View Orders'
+            on_press: app.show_orders()
+            size_hint_y: None
+            height: '48dp'
+
+
+        MDFillRoundFlatButton:
+            text: 'Manage Menu'
+            on_press: app.show_menu()
+            size_hint_y: None
+            height: '48dp'
+
+
+        MDRectangleFlatButton:
+            text: 'Inventory'
+            on_press: app.show_inventory()
+            size_hint_y: None
+            height: '48dp'
+
+        MDTextButton:
+            text: 'Reports'
+            on_press: app.show_reports()
+            size_hint_y: None
+            height: '48dp'
+
+        MDRaisedButton:
+            text: 'Test MD Button'
+            on_press: print("MD Test button pressed!")
+            size_hint_y: None
+            height: '48dp'
 
         Button:
             text: 'View Orders'

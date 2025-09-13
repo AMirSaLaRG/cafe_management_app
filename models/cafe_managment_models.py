@@ -174,14 +174,16 @@ class OrderDetail(Base):
     inventory_id = Column(ForeignKey('inventory.id'), nullable=False)
     order_id = Column(ForeignKey('order.id'), nullable=False)
     ship_id = Column(ForeignKey('ship.id'))
+    receiver = Column(String)
     box_amount = Column(Float)
     box_price = Column(Float)
-    box_discount = Column(Float)
+    overall_discount = Column(Float)
     boxes_ordered = Column(Float, nullable=False)
     numbers_of_box_shipped = Column(Float)
     numbers_of_box_received = Column(Float)
     numbers_of_box_approved = Column(Float)
     numbers_of_box_rejected = Column(Float)
+    status=Column(String)
     description = Column(String(500))
 
     # Add date fields for tracking

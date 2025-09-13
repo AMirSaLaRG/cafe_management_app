@@ -77,7 +77,7 @@ def test_orderdetail_crud_cycle(in_memory_db, setup_test_data):
         'ship_id': setup_test_data['ship_id'],
         'box_amount': 1.0,
         'box_price': 15.0,
-        'box_discount': 1.0,
+        'overall_discount': 1.0,
         'boxes_ordered': 5.0,
         'numbers_of_box_shipped': 5.0,
         'numbers_of_box_received': 5.0,
@@ -91,7 +91,7 @@ def test_orderdetail_crud_cycle(in_memory_db, setup_test_data):
     update_kwargs = {
         'box_amount': 1.5,
         'box_price': 16.0,
-        'box_discount': 2.0,
+        'overall_discount': 2.0,
         'boxes_ordered': 6.0,
         'numbers_of_box_shipped': 6.0,
         'numbers_of_box_received': 5.5,
@@ -202,7 +202,7 @@ def test_orderdetail_validation(in_memory_db, setup_test_data):
     result = in_memory_db.add_orderdetail(
         inventory_id=setup_test_data['inventory_id'],
         order_id=setup_test_data['order_id'],
-        box_discount=-1.0,  # Invalid negative value
+        overall_discount=-1.0,  # Invalid negative value
         boxes_ordered=5.0
     )
     assert result is None
@@ -221,7 +221,7 @@ def test_orderdetail_validation(in_memory_db, setup_test_data):
         order_id=setup_test_data['order_id'],
         boxes_ordered=5.0,  # Valid value
         box_price=15.0,     # Valid value
-        box_discount=1.0    # Valid value
+        overall_discount=1.0    # Valid value
     )
     assert result is not None
 

@@ -1114,6 +1114,7 @@ class DBHandler:
             id: Optional[int] = None,
             buyer: Optional[str] = None,
             payer: Optional[str]=None,
+            supplier_id:Optional[int]=None,
             supplier:Optional[str]=None,
             from_date: Optional[datetime]=None,
             to_date: Optional[datetime]=None,
@@ -1170,6 +1171,13 @@ class DBHandler:
                             query = query.filter_by(supplier_id=supplier_id)
                         else:
                             logging.info(f"No supplier found with name: {supplier}")
+                            return []
+                    if supplier_id:
+                        the_supplier = session.get(Supplier, supplier_id)
+                        if the_supplier:
+                            query = query.filter_by(supplier_id=supplier_id)
+                        else:
+                            logging.info(f"No supplier found with id: {supplier_id}")
                             return []
                     if from_date:
                         query = query.filter(Order.date >= from_date)
@@ -1438,9 +1446,10 @@ class DBHandler:
                      inventory_id:int,
                      order_id:int,
                      ship_id:Optional[int]=None,
+                     receiver:Optional[str]=None,
                      box_amount:Optional[float]=None,
                      box_price:Optional[float]=None,
-                     box_discount:Optional[float]=None,
+                     overall_discount:Optional[float]=None,
                      boxes_ordered:Optional[float]=None,
                      numbers_of_box_shipped:Optional[float]=None,
                      numbers_of_box_received:Optional[float]=None,
@@ -1449,11 +1458,18 @@ class DBHandler:
                      expected_delivery_date:Optional[datetime]=None,
                      actual_delivery_date:Optional[datetime]=None,
                      description:Optional[str]=None,
+                     status:Optional[str]=None,
                  ) -> Optional[OrderDetail]:
         """ adding new OrderDetail  """
 
         with self.Session() as session:
             try:
+
+                if receiver is not None:
+                    receiver = receiver.strip().lower()
+
+                if status is not None:
+                    status = status.strip().lower()
 
                 if box_amount is not None and box_amount<0:
                     logging.error("Value cant be les than zero")
@@ -1463,7 +1479,7 @@ class DBHandler:
                     logging.error("Value cant be les than zero")
                     return None
 
-                if box_discount is not None and box_discount<0:
+                if overall_discount is not None and overall_discount<0:
                     logging.error("Value cant be les than zero")
                     return None
 
@@ -1510,9 +1526,10 @@ class DBHandler:
                     inventory_id=inventory_id,
                     order_id=order_id,
                     ship_id=ship_id,
+                    receiver=receiver,
                     box_amount=box_amount,
                     box_price=box_price,
-                    box_discount=box_discount,
+                    overall_discount=overall_discount,
                     boxes_ordered=boxes_ordered,
                     numbers_of_box_shipped=numbers_of_box_shipped,
                     numbers_of_box_received=numbers_of_box_received,
@@ -1520,6 +1537,7 @@ class DBHandler:
                     numbers_of_box_rejected=numbers_of_box_rejected,
                     expected_delivery_date=expected_delivery_date,
                     actual_delivery_date=actual_delivery_date,
+                    status=status,
                     description=description,
                 )
                 session.add(new_detail)
@@ -1538,6 +1556,8 @@ class DBHandler:
             inventory_id:Optional[int]=None,
             order_id:Optional[int]=None,
             ship_id:Optional[int]=None,
+            receiver:Optional[str]=None,
+            status:Optional[str]=None,
             has_reject: bool=False,
             row_num: Optional[int] = None
 
@@ -1549,7 +1569,9 @@ class DBHandler:
             order_id: filter by order id
             inventory_id: filter by inventory_id
             ship_id: filter by ship_id
+            receiver: receiver
             has_reject: filter by has_reject
+            status: status
             row_num: row number
 
         Returns:
@@ -1586,6 +1608,14 @@ class DBHandler:
                             return []
                         query = query.filter_by(inventory_id=inventory_id)
 
+                    if receiver is not None:
+                        receiver = receiver.lower().strip()
+                        query = query.filter_by(receiver=receiver)
+
+                    if status is not None:
+                        status = status.lower().strip()
+                        query = query.filter_by(status=status)
+
                     if has_reject:
                         query = query.filter(OrderDetail.numbers_of_box_rejected.isnot(None))
 
@@ -1612,7 +1642,11 @@ class DBHandler:
         Returns:
             The updated OrderDetail if successful, None on error.
         """
-        fields_to_process = ['shipper', "receiver", "payer"]
+        fields_to_process = ["receiver", "status"]
+        for field in fields_to_process:
+            value = getattr(detail, field, None)
+            if isinstance(value, str):
+                setattr(detail, field, value.strip().lower())
 
         if not detail.id:
             logging.error("Cannot edit ship without a valid ID.")
