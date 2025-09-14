@@ -2895,7 +2895,7 @@ class DBHandler:
             try:
 
                 existing_overlap = session.query(EstimatedBills).filter(
-                    EstimatedBills.category == category,
+                    EstimatedBills.name == name,
                     EstimatedBills.from_date < to_date,
                     EstimatedBills.to_date > from_date
                 ).first()
@@ -3010,7 +3010,7 @@ class DBHandler:
             try:
                 existing_overlap = session.query(EstimatedBills).filter(
                     EstimatedBills.id != estimated_bills.id,
-                    EstimatedBills.category == estimated_bills.category,
+                    EstimatedBills.name == estimated_bills.name,
                     EstimatedBills.from_date < estimated_bills.to_date,
                     EstimatedBills.to_date > estimated_bills.from_date
                 ).first()
@@ -3055,6 +3055,217 @@ class DBHandler:
             except Exception as e:
                 session.rollback()
                 logging.error(f"Failed to delete estimated_bills {estimated_bills.id}: {e}")
+                return False
+
+ #--bills--
+
+    def add_bills(self,
+                          name: str,
+                            category: str=None,
+                          from_date: datetime=None,
+                          to_date: datetime=None,
+                          cost: Optional[float] = None,
+                          payer: Optional[str] = None,
+                          description:Optional[str] = None,
+                    ) -> Optional[Bills]:
+
+        """ adding new bill  """
+        if cost is not None and cost < 0:
+            logging.error("Total amount can not be negative")
+            return None
+
+        if from_date >= to_date:
+            logging.error("from date should be less than to date ")
+            return None
+
+        if name is not None:
+            name = name.lower().strip()
+
+        if payer is not None:
+            payer = payer.lower().strip()
+
+        if category is not None:
+            category = category.lower().strip()
+
+        with self.Session() as session:
+            try:
+
+                existing_overlap = session.query(Bills).filter(
+                    Bills.name == name,
+                    Bills.from_date < to_date,
+                    Bills.to_date > from_date
+                ).first()
+
+                if existing_overlap:
+                    logging.error(f"Time overlap with existing bill  (ID: {existing_overlap.id}) "
+                                  f"from {existing_overlap.from_date} to {existing_overlap.to_date}")
+                    return None
+
+
+                new_bill = Bills(
+                    name=name,
+                    category=category,
+                    cost=cost,
+                    payer=payer,
+                    from_date=from_date,
+                    to_date=to_date,
+                    description=description,
+                )
+                session.add(new_bill)
+                session.commit()
+                session.refresh(new_bill)
+                logging.info("bill added successfully")
+                return new_bill
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to add bill to the database: {e}")
+                return None
+
+    def get_bills(
+            self,
+            id: Optional[int] = None,
+            name: Optional[str] = None,
+            category: Optional[str] = None,
+            payer: Optional[str] = None,
+            from_date: Optional[datetime] = None,
+            to_date: Optional[datetime] = None,
+            row_num: Optional[int] = None,
+    ) -> list[Bills]:
+        """Get bill with optional filters
+
+
+
+        Returns:
+            List of matching bill (empty list if no matches or no filters provided)
+        """
+
+        if from_date and to_date and from_date >= to_date:
+            logging.error("from_date should be less than to_date")
+            return []
+
+        if payer is not None:
+            payer = payer.lower().strip()
+
+        if name is not None:
+            name = name.lower().strip()
+
+        if category is not None:
+            category = category.lower().strip()
+
+        with self.Session() as session:
+                try:
+                    query = session.query(Bills).order_by(Bills.from_date.desc())
+                    if id:
+                        query = query.filter_by(id=id)
+
+                    if name:
+                        query = query.filter_by(name=name)
+
+                    if payer:
+                        query = query.filter_by(payer=payer)
+
+                    if category:
+                        query = query.filter_by(category=category)
+
+                    if from_date:
+                        query = query.filter(Bills.from_date >= from_date)
+
+                    if to_date:
+                        query = query.filter(Bills.from_date <= to_date)
+
+                    if row_num:
+                        query = query.limit(row_num)
+
+                    result = query.all()
+                    logging.info(f"Found {len(result)} Bills")
+
+                    return cast(list[Bills], result)
+
+                except Exception as e:
+                    session.rollback()
+                    logging.error(f"Error fetching Bills: {str(e)}")
+                    return []
+
+
+    def edit_bills(self, bill:Bills) -> Optional[Bills]:
+        """
+        Updates an existing bill in the database.
+
+        Args:
+            bill: The Bill object with updated values.
+                         Must have valid ID.
+
+        Returns:
+    The updated bills if successful, None on error.
+        """
+
+        fields_to_process = ['name', "category", "payer"]
+        for field in fields_to_process:
+            value = getattr(bill, field, None)
+            if isinstance(value, str):
+                setattr(bill, field, value.strip().lower())
+
+        if bill.from_date and bill.to_date:
+            if bill.from_date >= bill.to_date:
+                logging.error("from date should be less than to date ")
+                return None
+
+        with self.Session() as session:
+            test = session.query(Bills).all()
+            try:
+                existing_overlap = session.query(Bills).filter(
+                    Bills.id.isnot(bill.id),
+                    Bills.name.is_(bill.name),
+                    Bills.from_date < bill.to_date,
+                    Bills.to_date > bill.from_date
+
+
+                ).first()
+
+                if existing_overlap:
+                    logging.error(f"Time overlap with existing bill (ID: {existing_overlap.id})")
+                    return None
+
+                the_estimated_bill = session.get(Bills, bill.id)
+                if not the_estimated_bill:
+                    logging.error(f"Bill {bill.id} does not exist")
+                    return None
+
+                new_bill  = session.merge(bill)
+                session.commit()
+                session.refresh(new_bill)
+                logging.info(f"Successfully updated bill")
+                return new_bill
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to update bill : {e}")
+                return None
+
+    def delete_bills(self, bill:Bills) -> bool:
+        """
+        Deletes a Bills.
+        Returns True if deleted, False otherwise.
+        """
+
+        if not bill.id:
+            logging.error("Cannot delete bill record without ID.")
+            return False
+
+        with self.Session() as session:
+
+            try:
+                the_estimated_bill = session.get(Bills, bill.id)
+                if the_estimated_bill:
+                    session.delete(the_estimated_bill)
+                    session.commit()
+                    logging.info(f"Deleted bill with ID: {bill.id}")
+                    return True
+                else:
+                    logging.warning(f"bill with ID {bill.id} not found for deletion.")
+                    return False
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to delete bill {bill.id}: {e}")
                 return False
 
 

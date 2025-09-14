@@ -430,6 +430,7 @@ class Bills(Base):
 
     id = Column(Integer, primary_key=True)
     name=Column(String)
+    category=Column(String)
     from_date = Column(DateTime)
     to_date = Column(DateTime)
     cost = Column(Float)
