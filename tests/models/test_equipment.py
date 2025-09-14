@@ -161,7 +161,7 @@ def test_equipment_date_expire_filter(in_memory_db):
     # Create equipment with expire dates
     eq1 = in_memory_db.add_equipment(
         name='Equipment 1',
-        expire_date=datetime(2024, 6, 1)
+        expire_date=datetime(2024, 4, 1)
     )
     eq2 = in_memory_db.add_equipment(
         name='Equipment 2',

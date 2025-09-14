@@ -3983,7 +3983,7 @@ class DBHandler:
                         query = query.filter(Equipment.expire_date >= expire_from_date)
 
                     if expire_to_date:
-                        query = query.filter(Equipment.purchase_date <= expire_to_date)
+                        query = query.filter(Equipment.expire_date <= expire_to_date)
 
                     if purchase_from_date:
                         query = query.filter(Equipment.purchase_date >= purchase_from_date)
