@@ -2964,7 +2964,7 @@ class DBHandler:
                         query = query.filter_by(category=category)
 
                     if from_date:
-                        query = query.filter(EstimatedBills.from_date >= from_date)
+                        query = query.filter(EstimatedBills.to_date >= from_date)
 
                     if to_date:
                         query = query.filter(EstimatedBills.from_date <= to_date)
@@ -3168,7 +3168,7 @@ class DBHandler:
                         query = query.filter_by(category=category)
 
                     if from_date:
-                        query = query.filter(Bills.from_date >= from_date)
+                        query = query.filter(Bills.to_date >= from_date)
 
                     if to_date:
                         query = query.filter(Bills.from_date <= to_date)

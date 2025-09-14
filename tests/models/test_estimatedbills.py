@@ -64,8 +64,8 @@ def test_estimatedbills_time_overlap_prevention(in_memory_db, setup_test_data):
     """Test that time overlaps are prevented within same category"""
     # First bill
     bill1 = in_memory_db.add_estimatedbills(
-        name="Rent Q1",
-        category="rent",
+        name="Rent",
+        category="rent Q1",
         from_date=datetime(2024, 1, 1),
         to_date=datetime(2024, 3, 31),
         cost=1500.0
@@ -74,8 +74,8 @@ def test_estimatedbills_time_overlap_prevention(in_memory_db, setup_test_data):
 
     # Overlapping bill - same category (should fail)
     bill2 = in_memory_db.add_estimatedbills(
-        name="Rent Q2",
-        category="rent",  # Same category
+        name="Rent",
+        category="rent Q2",  # Same category
         from_date=datetime(2024, 3, 15),  # Overlaps with Q1
         to_date=datetime(2024, 6, 30),
         cost=1500.0
