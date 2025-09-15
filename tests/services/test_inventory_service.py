@@ -7,6 +7,7 @@ import pytest
 
 @pytest.fixture
 def setup_menu_inventory(in_memory_db):
+    service = InventoryService(in_memory_db)
     sup1 = in_memory_db.add_supplier('Supplier 1', load_time_hr=1)
     sup2 = in_memory_db.add_supplier('Supplier 2', load_time_hr=2)
     menu = in_memory_db.add_menu(name='latte', size='L')
@@ -17,14 +18,22 @@ def setup_menu_inventory(in_memory_db):
 
 
     base_stock_record1 = in_memory_db.add_inventorystockrecord(inventory_id=inv1.id, manual_report=100)
+    x = service._calculate_inventory(inv1.id)
     base_stock_record2 = in_memory_db.add_inventorystockrecord(inventory_id=inv2.id, manual_report=6)
+    service._calculate_inventory(inv2.id)
     base_stock_record3 = in_memory_db.add_inventorystockrecord(inventory_id=inv3.id, manual_report=10)
+    service._calculate_inventory(inv3.id)
+
+
     r1 = in_memory_db.add_recipe(inv1.id, menu.id, inventory_item_amount_usage=11)
     r2 = in_memory_db.add_recipe(inv2.id, menu.id, inventory_item_amount_usage=0.4)
     r3 = in_memory_db.add_recipe(inv3.id, menu.id, inventory_item_amount_usage=1)
     r4 = in_memory_db.add_recipe(inv1.id, menu2.id, inventory_item_amount_usage=50)
     r5 = in_memory_db.add_recipe(inv2.id, menu2.id, inventory_item_amount_usage=3)
     r6 = in_memory_db.add_recipe(inv3.id, menu2.id, inventory_item_amount_usage=1000)
+
+    menu = in_memory_db.get_menu(id=menu.id)[0]
+    menu2 = in_memory_db.get_menu(id=menu2.id)[0]
 
     service = InventoryService(in_memory_db)
     test1 = service._calculate_inventory(inv1.id)
@@ -40,28 +49,30 @@ def test_inventory_check_menu(in_memory_db, setup_menu_inventory):
     # test2=service._calculate_inventory(setup_menu_inventory['inv2'].id)
     # test3=service._calculate_inventory(setup_menu_inventory['inv3'].id)
     # assert test1 and test2 and test3
+    a = in_memory_db.get_inventory()
+    b = in_memory_db.get_inventorystockrecord()
     test4 = service._calculate_inventory(999999)
     assert test4 is False
 
-    result, missing_items =service.check_stock_for_menu(menu_id=setup_menu_inventory['menu'].id, quantity=10)
+    result, missing_items =service.check_stock_for_menu(menu_item=setup_menu_inventory['menu'], quantity=10)
     assert result is False
     assert 'coffee' in missing_items
     assert missing_items['coffee'] > 0
 
-    result, missing_items =service.check_stock_for_menu(menu_id=setup_menu_inventory['menu'].id)
+    result, missing_items =service.check_stock_for_menu(menu_item=setup_menu_inventory['menu'])
     assert result is True
 
-    result, missing_items =service.check_stock_for_menu(menu_id=setup_menu_inventory['menu2'].id)
+    result, missing_items =service.check_stock_for_menu(menu_item=setup_menu_inventory['menu2'])
     assert result is False
     assert set(missing_items.keys()) == { 'straw'}
 
 def test_deduct_stock_menu(in_memory_db, setup_menu_inventory):
     service = InventoryService(in_memory_db)
 
-    deduct1 = service.deduct_stock_by_menu(menu_id=setup_menu_inventory['menu'].id, quantity=2)
+    deduct1 = service.deduct_stock_by_menu(menu_item=setup_menu_inventory['menu'], quantity=2)
     assert deduct1 is True
 
-    deduct2 = service.deduct_stock_by_menu(menu_id=setup_menu_inventory['menu'].id,
+    deduct2 = service.deduct_stock_by_menu(menu_item=setup_menu_inventory['menu'],
                                            quantity=1,
                                            category='sells',
                                            foreign_id=11,
@@ -75,7 +86,7 @@ def test_deduct_stock_menu(in_memory_db, setup_menu_inventory):
     stock_before_fail2 = in_memory_db.get_inventory(id=setup_menu_inventory['inv2'].id)[0].current_stock
     stock_before_fail3 = in_memory_db.get_inventory(id=setup_menu_inventory['inv3'].id)[0].current_stock
 
-    deduct3 = service.deduct_stock_by_menu(menu_id=setup_menu_inventory['menu2'].id, quantity=2)
+    deduct3 = service.deduct_stock_by_menu(menu_item=setup_menu_inventory['menu2'], quantity=2)
     assert deduct3 is False
 
     stock_after_fail1 = in_memory_db.get_inventory(id=setup_menu_inventory['inv1'].id)[0].current_stock
@@ -120,9 +131,9 @@ def test_restock(in_memory_db, setup_menu_inventory):
     stock_before2 = in_memory_db.get_inventory(id=setup_menu_inventory['inv2'].id)[0].current_stock
     stock_before3 = in_memory_db.get_inventory(id=setup_menu_inventory['inv3'].id)[0].current_stock
 
-    deduct1 = service.deduct_stock_by_menu(menu_id=setup_menu_inventory['menu'].id, quantity=2)
+    deduct1 = service.deduct_stock_by_menu(menu_item=setup_menu_inventory['menu'], quantity=2)
     assert deduct1 is True
-    restock = service.restock_by_menu(menu_id=setup_menu_inventory['menu'].id, quantity=2)
+    restock = service.restock_by_menu(menu_item=setup_menu_inventory['menu'], quantity=2)
     assert restock is True
 
     stock_after1 = in_memory_db.get_inventory(id=setup_menu_inventory['inv1'].id)[0].current_stock
@@ -137,9 +148,9 @@ def test_restock(in_memory_db, setup_menu_inventory):
     stock_before2 = in_memory_db.get_inventory(id=setup_menu_inventory['inv2'].id)[0].current_stock
     stock_before3 = in_memory_db.get_inventory(id=setup_menu_inventory['inv3'].id)[0].current_stock
 
-    deduct1 = service.deduct_stock_by_menu(menu_id=setup_menu_inventory['menu'].id, quantity=2)
+    deduct1 = service.deduct_stock_by_menu(menu_item=setup_menu_inventory['menu'], quantity=2)
     assert deduct1 is True
-    restock = service.restock_by_menu(menu_id=setup_menu_inventory['menu'].id, quantity=3)
+    restock = service.restock_by_menu(menu_item=setup_menu_inventory['menu'], quantity=3)
     assert restock is True
 
     stock_after1 = in_memory_db.get_inventory(id=setup_menu_inventory['inv1'].id)[0].current_stock

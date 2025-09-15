@@ -2,7 +2,7 @@ from typing import Optional
 from datetime import datetime, timedelta
 
 from models.dbhandler import DBHandler
-from models.cafe_managment_models import Inventory, Menu, Recipe, InventoryStockRecord
+from models.cafe_managment_models import Inventory, Menu, InventoryStockRecord
 
 INITIATE_STOCK_CATEGORY = "Initiate Stock"
 
@@ -71,7 +71,7 @@ class InventoryService:
 
     #todo date should removed i think
     #check if it is possible to make this item
-    def check_stock_for_menu(self, menu_id:int, quantity:float=1, date:datetime=None) -> tuple[bool, dict[str, float]]:
+    def check_stock_for_menu(self, menu_item:Menu, quantity:float=1, date:datetime=None) -> tuple[bool, dict[str, float]]:
         """
         Check if a menu item can be prepared given the current inventory stock.
 
@@ -80,7 +80,7 @@ class InventoryService:
         If any ingredient is insufficient, records the missing amount.
 
         Args:
-            menu_id (int): The ID of the menu item to check.
+            menu_id (int): the Menu object.
             quantity (float, optional): Number of menu items to prepare. Defaults to 1.
 
         Returns:
@@ -92,21 +92,19 @@ class InventoryService:
 
         is_satisfied = True
         missing_items = {}
-        list_menu_items = self.db.get_menu(id = menu_id, with_recipe=True)
-        if list_menu_items:
-            menu_item:Menu = list_menu_items[0]
-            menu_recipe = menu_item.recipe
-            for used_item in menu_recipe:
-                inventory_item = used_item.inventory_item
-                amount = used_item.inventory_item_amount_usage
-                amount_needed = amount * quantity
-                current_stock = inventory_item.current_stock or 0
-                if current_stock < amount_needed:
-                    is_satisfied = False
-                    missing_items[inventory_item.name] = amount_needed - inventory_item.current_stock
 
-        else:
-            is_satisfied = False
+        menu_item:Menu = menu_item
+        menu_recipe = menu_item.recipe
+        for used_item in menu_recipe:
+            inventory_item = used_item.inventory_item
+            amount = used_item.inventory_item_amount_usage
+            amount_needed = amount * quantity
+            current_stock = inventory_item.current_stock or 0
+            if current_stock < amount_needed:
+                is_satisfied = False
+                missing_items[inventory_item.name] = amount_needed - current_stock
+
+
 
         return is_satisfied, missing_items
     #check if it is possible to make this item
@@ -128,18 +126,17 @@ class InventoryService:
         return is_satisfied, missing_amount
 
     #reduce ingredients after a sale or menu usage
-    def deduct_stock_by_menu(self, menu_id: int,
+    def deduct_stock_by_menu(self, menu_item:Menu,
                              quantity:float,
                              category:str=None,
                              foreign_id: int = None,
                              date:datetime=None,
                              description:str=None,
                              ) -> bool:
-        satisfied, items = self.check_stock_for_menu(menu_id=menu_id, quantity=quantity)
+        satisfied, items = self.check_stock_for_menu(menu_item=menu_item, quantity=quantity)
         if not satisfied:
             return False
         ids = []
-        menu_item: Menu = self.db.get_menu(id=menu_id, with_recipe=True)[0]
         menu_recipe = menu_item.recipe
         for used_item in menu_recipe:
             inventory_item: Inventory = used_item.inventory_item
@@ -186,7 +183,7 @@ class InventoryService:
         return False
 
 
-    def restock_by_menu(self, menu_id: int,
+    def restock_by_menu(self, menu_item: Menu,
                              quantity:float,
                              category:str=None,
                              foreign_id: int = None,
@@ -195,7 +192,6 @@ class InventoryService:
                              ) -> bool:
 
         ids = []
-        menu_item: Menu = self.db.get_menu(id=menu_id, with_recipe=True)[0]
         menu_recipe = menu_item.recipe
         for used_item in menu_recipe:
             inventory_item: Inventory = used_item.inventory_item
