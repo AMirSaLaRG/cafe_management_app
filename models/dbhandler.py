@@ -2393,7 +2393,7 @@ class DBHandler:
     def add_inventoryusage(self,
                     inventory_item_id:int ,
                     usage_id:int ,
-                    amount: Optional[int] = None,
+                    amount: Optional[float] = None,
 
                     ) -> Optional[InventoryUsage]:
 
@@ -2541,7 +2541,7 @@ class DBHandler:
     def add_menuusage(self,
                     menu_id:int ,
                     usage_id:int ,
-                    amount: Optional[int] = None,
+                    amount: Optional[float] = None,
 
                     ) -> Optional[MenuUsage]:
 

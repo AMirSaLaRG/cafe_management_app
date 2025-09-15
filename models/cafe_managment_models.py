@@ -270,8 +270,8 @@ class Usage(Base):
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
-    inventory_usage = relationship("InventoryUsage", back_populates="usage")
-    menu_usage = relationship("MenuUsage", back_populates="usage")
+    inventory_usage = relationship("InventoryUsage", back_populates="usage", lazy="joined")
+    menu_usage = relationship("MenuUsage", back_populates="usage", lazy="joined")
 #done
 class InventoryUsage(Base):
     __tablename__ = "inventory_usage"
@@ -283,7 +283,7 @@ class InventoryUsage(Base):
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
-    inventory_item = relationship("Inventory", back_populates="usage_records")
+    inventory_item = relationship("Inventory", back_populates="usage_records", lazy="joined")
     usage = relationship("Usage", back_populates="inventory_usage")
 #done
 class MenuUsage(Base):
@@ -296,7 +296,7 @@ class MenuUsage(Base):
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
-    menu_item= relationship("Menu", back_populates="usage_record")
+    menu_item= relationship("Menu", back_populates="usage_record", lazy="joined")
     usage = relationship("Usage", back_populates="menu_usage")
 
 
