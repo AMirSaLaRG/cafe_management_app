@@ -1,6 +1,6 @@
 from datetime import datetime
 from models.dbhandler import DBHandler
-from models.cafe_managment_models import Sales, Invoice, InvoicePayment
+from models.cafe_managment_models import Sales, Invoice, InvoicePayment, Menu
 
 
 class SalesService:
@@ -23,7 +23,7 @@ class SalesService:
     #Full sale flow (invoice, sales record, stock deduction)
 
     def process_sale(self,
-                     menu_id,
+                     menu_item:Menu,
                      quantity,
                      discount,
                      price=None,
@@ -42,13 +42,10 @@ class SalesService:
                                 description=f'Order: {description}',)
             invoice_id = order_invoice.id
         if price is None:
-            menu_items = self.db.get_menu(menu_id)
-            if not menu_items:
-                return False
-            current_price = menu_items[0].current_price
+            current_price = menu_item.current_price
             price = (current_price * quantity)
 
-        if self.db.add_sales(menu_id=menu_id,
+        if self.db.add_sales(menu_id=menu_item.id,
                           invoice_id=invoice_id,
                           number=quantity,
                           discount=discount,

@@ -23,7 +23,7 @@ def test_process_sale(in_memory_db, menus):
     # assert menu2
     # assert menu1
 
-    test_process_sale_1 = service.process_sale(menu1.id,
+    test_process_sale_1 = service.process_sale(menu1,
                                                10,
                                                discount=100000,
                                                description='testing dog',
@@ -37,7 +37,7 @@ def test_process_sale(in_memory_db, menus):
     assert created_invoice_test1[0].sales[0].id == menu1.id
     assert created_invoice_test1[0].total_price == ((menu1.current_price * 10) - 100000)
 
-    test_process_sale_2 = service.process_sale(menu1.id,
+    test_process_sale_2 = service.process_sale(menu1,
                                                1,
                                                discount=100000,
                                                description='testing dog',
@@ -56,7 +56,7 @@ def test_wrong_process_sale(in_memory_db, menus):
 
     menu1, menu2, menu3 = menus
     #incorrect invoice id
-    test_process_sale_1 = service.process_sale(menu1.id,
+    test_process_sale_1 = service.process_sale(menu1,
                                                10,
                                                discount=10000,
                                                description='testing dog',
@@ -65,7 +65,7 @@ def test_wrong_process_sale(in_memory_db, menus):
     assert test_process_sale_1 is False
 
     #incorrect menu id
-    test_process_sale_2 = service.process_sale(999,
+    test_process_sale_2 = service.process_sale(menu1,
                                                10,
                                                discount=10000,
                                                description='testing dog',
@@ -74,7 +74,7 @@ def test_wrong_process_sale(in_memory_db, menus):
     assert test_process_sale_2 is False
 
     #what is discont be more than price
-    test_process_sale_2 = service.process_sale(menu1.id,
+    test_process_sale_2 = service.process_sale(menu1,
                                                1,
                                                discount=1000000,
                                                description='testing dog',
@@ -89,7 +89,7 @@ def test_cancel_sale(in_memory_db, menus):
     menu1, menu2, menu3 = menus
 
     # First, process a sale to have something to cancel
-    sale = service.process_sale(menu1.id, 5, discount=50000, description="test cancel", saler="Mr test")
+    sale = service.process_sale(menu1, 5, discount=50000, description="test cancel", saler="Mr test")
     assert sale
 
     invoices = in_memory_db.get_invoice()
@@ -111,7 +111,7 @@ def test_cancel_sale_partial(in_memory_db, menus):
     menu1, menu2, menu3 = menus
 
     # Process a sale of 10 items
-    sale = service.process_sale(menu1.id, 10, discount=10000, description="partial cancel", saler="Mr test")
+    sale = service.process_sale(menu1, 10, discount=10000, description="partial cancel", saler="Mr test")
     assert sale
 
     invoice = in_memory_db.get_invoice()[0]
@@ -131,7 +131,7 @@ def test_cancel_sale_full(in_memory_db, menus):
     menu1, menu2, menu3 = menus
 
     # Process a sale of 5 items
-    sale = service.process_sale(menu1.id, 5, discount=5000, description="full cancel", saler="Mr test")
+    sale = service.process_sale(menu1, 5, discount=5000, description="full cancel", saler="Mr test")
     assert sale
 
     invoice = in_memory_db.get_invoice()[0]
@@ -148,7 +148,7 @@ def test_cancel_sale_over_quantity(in_memory_db, menus):
     service = SalesService(in_memory_db)
     menu1, menu2, menu3 = menus
 
-    sale = service.process_sale(menu1.id, 3, discount=0, description="over quantity", saler="Mr test")
+    sale = service.process_sale(menu1, 3, discount=0, description="over quantity", saler="Mr test")
     assert sale
 
     invoice = in_memory_db.get_invoice()[0]
