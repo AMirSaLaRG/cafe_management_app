@@ -75,6 +75,8 @@ class MenuService:
 
     def search_menu_items(self, name: str = None, category: str = None, serving: bool = None) -> list[Menu]:
         return self.db.get_menu(name=name, category=category, serving=serving)
+    def get_menu_all_available_items(self):
+        return self.db.get_menu(serving=True)
 
     def list_menu_items(self) -> list[Menu]:
         return self.db.get_menu()

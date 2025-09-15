@@ -54,15 +54,15 @@ def test_inventory_check_menu(in_memory_db, setup_menu_inventory):
     test4 = service._calculate_inventory(999999)
     assert test4 is False
 
-    result, missing_items =service.check_stock_for_menu(menu_item=setup_menu_inventory['menu'], quantity=10)
+    result, missing_items, _ =service.check_stock_for_menu(menu_item=setup_menu_inventory['menu'], quantity=10)
     assert result is False
     assert 'coffee' in missing_items
     assert missing_items['coffee'] > 0
 
-    result, missing_items =service.check_stock_for_menu(menu_item=setup_menu_inventory['menu'])
+    result, missing_items, _ =service.check_stock_for_menu(menu_item=setup_menu_inventory['menu'])
     assert result is True
 
-    result, missing_items =service.check_stock_for_menu(menu_item=setup_menu_inventory['menu2'])
+    result, missing_items, _ =service.check_stock_for_menu(menu_item=setup_menu_inventory['menu2'])
     assert result is False
     assert set(missing_items.keys()) == { 'straw'}
 

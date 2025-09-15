@@ -69,9 +69,8 @@ class InventoryService:
 
 
 
-    #todo date should removed i think
     #check if it is possible to make this item
-    def check_stock_for_menu(self, menu_item:Menu, quantity:float=1, date:datetime=None) -> tuple[bool, dict[str, float]]:
+    def check_stock_for_menu(self, menu_item:Menu, quantity:float=1) -> tuple[bool, dict[str, float], int]:
         """
         Check if a menu item can be prepared given the current inventory stock.
 
@@ -80,11 +79,11 @@ class InventoryService:
         If any ingredient is insufficient, records the missing amount.
 
         Args:
-            menu_id (int): the Menu object.
+            menu_item (int): the Menu object.
             quantity (float, optional): Number of menu items to prepare. Defaults to 1.
 
         Returns:
-            tuple[bool, dict[str, float]]:
+            tuple[bool, dict[str, float, int]]:
                 - bool: True if all ingredients are sufficient, False if any are missing.
                 - dict[str, float]: Mapping of inventory item names to missing amounts
                   (empty if all ingredients are sufficient).
@@ -92,6 +91,8 @@ class InventoryService:
 
         is_satisfied = True
         missing_items = {}
+        number_of_available_ingredients = []
+        max_available = 0
 
         menu_item:Menu = menu_item
         menu_recipe = menu_item.recipe
@@ -103,10 +104,14 @@ class InventoryService:
             if current_stock < amount_needed:
                 is_satisfied = False
                 missing_items[inventory_item.name] = amount_needed - current_stock
+            else:
+                number_available_by_this_ingredient =int( current_stock / amount )
+                number_of_available_ingredients.append(number_available_by_this_ingredient)
+
+            max_available = min(number_of_available_ingredients) if number_of_available_ingredients else 0
 
 
-
-        return is_satisfied, missing_items
+        return is_satisfied, missing_items, max_available
     #check if it is possible to make this item
     def check_stock_for_inventory(self, inventory_id:int, quantity:float, date:datetime=None) -> tuple[bool, dict[str, float]]:
         is_satisfied = True
@@ -133,7 +138,7 @@ class InventoryService:
                              date:datetime=None,
                              description:str=None,
                              ) -> bool:
-        satisfied, items = self.check_stock_for_menu(menu_item=menu_item, quantity=quantity)
+        satisfied, items, _ = self.check_stock_for_menu(menu_item=menu_item, quantity=quantity)
         if not satisfied:
             return False
         ids = []
