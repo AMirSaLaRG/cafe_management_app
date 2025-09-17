@@ -54,5 +54,14 @@ class CafeManager:
                 "item": item,
                 "max_to_make": number_available
             })
+            print(item)
 
         return available_items
+
+
+    def add_menu_item(self, name, size, category, value_added_tax, description=None):
+        return self.menu.add_menu_item(name=name,
+                                        size=size,
+                                        category=category,
+                                        value_added_tax=value_added_tax,
+                                        description=description)
