@@ -1,6 +1,8 @@
 from datetime import datetime
+from typing import Optional
+
 from models.dbhandler import DBHandler
-from models.cafe_managment_models import Sales, Invoice, InvoicePayment, Menu
+from models.cafe_managment_models import Sales, Invoice, InvoicePayment, Menu, SalesForecast
 
 
 class SalesService:
@@ -170,3 +172,12 @@ class SalesService:
 
         return True
 
+
+    def add_sales_forecast(self,menu_id:int, num:int, from_date:datetime=None, to_date:datetime=None)->Optional[SalesForecast]:
+        #todo from_date and to_date should be optional and if none be this year
+        if not from_date:
+            from_date = datetime.now()
+        if not to_date:
+            year = datetime.now().year
+            to_date = datetime(year, 12, 31)
+        return self.db.add_salesforecast(menu_id, num, from_date, to_date)

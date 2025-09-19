@@ -314,7 +314,7 @@ class DBHandler:
 
             except Exception as e:
                 session.rollback()
-                logging.error(f"Failed to find menu item")
+                logging.error(f"Failed to find menu item: {e}")
                 return []
 
     def edit_menu(self, menu:Union[Menu, list[Menu]]) -> Menu | list[Menu] | None:
@@ -2688,9 +2688,9 @@ class DBHandler:
 
     def add_salesforecast(self,
                           menu_item_id: int,
+                          sell_number:int,
                           from_date: datetime,
                           to_date: datetime,
-                          sell_number:int,
                     ) -> Optional[SalesForecast]:
 
         """ adding new SalesForecast  """
@@ -2698,7 +2698,7 @@ class DBHandler:
             logging.error("Total amount can not be negative")
             return None
 
-        if from_date >= to_date:
+        if from_date and to_date and from_date >= to_date:
             logging.error("from date should be less than to_date ")
             return None
 
@@ -2710,17 +2710,17 @@ class DBHandler:
                 if not menu_check:
                     logging.info(f"No menu item found with ID: {menu_item_id}")
                     return None
+                if session.query(SalesForecast).filter(SalesForecast.menu_item_id.is_(menu_item_id)).first():
+                    existing_overlap = session.query(SalesForecast).filter(
+                        SalesForecast.menu_item_id == menu_item_id,
+                        SalesForecast.from_date < to_date,
+                        SalesForecast.to_date > from_date
+                    ).first()
 
-                existing_overlap = session.query(SalesForecast).filter(
-                    SalesForecast.menu_item_id == menu_item_id,
-                    SalesForecast.from_date < to_date,
-                    SalesForecast.to_date > from_date
-                ).first()
-
-                if existing_overlap:
-                    logging.error(f"Time overlap with existing forecast (ID: {existing_overlap.id}) "
-                                  f"from {existing_overlap.from_date} to {existing_overlap.to_date}")
-                    return None
+                    if existing_overlap:
+                        logging.error(f"Time overlap with existing forecast (ID: {existing_overlap.id}) "
+                                      f"from {existing_overlap.from_date} to {existing_overlap.to_date}")
+                        return None
 
 
                 new_sales_forecast = SalesForecast(

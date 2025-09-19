@@ -13,16 +13,14 @@ class MenuService:
                       category: str,
                       value_added_tax: float,
                       serving: bool = True,
-                      description: str = None) -> bool:
-        new = self.db.add_menu(name=name,
+                      description: str = None) -> Optional[Menu]:
+        return self.db.add_menu(name=name,
                                size=size,
                                category=category,
                                value_added_tax=value_added_tax,
                                serving=serving,
                                description=description)
-        if new:
-                return True
-        return False
+
 
     def change_attribute_menu_item(self, menu_id, name: Optional[str] = None,
                                    size: Optional[str] = None,
@@ -87,7 +85,12 @@ class MenuService:
         return inventory_items_list
 
 
-    def add_recipe_of_menu_item(self, menu_id, inventory_id, amount, writer, note:Optional[str]=None) -> bool:
+    def add_recipe_of_menu_item(self,
+                                menu_id,
+                                inventory_id,
+                                amount,
+                                writer,
+                                note:Optional[str]=None) -> bool:
         if self.db.add_recipe(inventory_id=inventory_id,
                            menu_id=menu_id,
                            inventory_item_amount_usage=amount,

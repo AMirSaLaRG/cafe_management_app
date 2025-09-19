@@ -11,10 +11,11 @@ from services.menu_service import MenuService
 from services.sales_service import SalesService
 from services.supplier_service import SupplierService
 from services.usage_record_service import OtherUsageService
+from typing import Optional,Union
 
-from typing import Optional, List
 from datetime import datetime
 
+from models.cafe_managment_models import *
 
 class CafeManager:
     """
@@ -51,17 +52,45 @@ class CafeManager:
             available, missing_items, number_available = self.inventory.check_stock_for_menu(item)
 
             available_items.append({
-                "item": item,
+                "id": item.id,
                 "max_to_make": number_available
             })
-            print(item)
 
         return available_items
 
 
-    def add_menu_item(self, name, size, category, value_added_tax, description=None):
-        return self.menu.add_menu_item(name=name,
-                                        size=size,
-                                        category=category,
-                                        value_added_tax=value_added_tax,
-                                        description=description)
+    def create_new_menu_item(self,user_name:str,
+                             name:str,
+                             size:str,
+                             category:str,
+                             value_added_tax:float,
+                             recipe_items:list[dict[str, Union[Optional[str], float]]],
+                             price:float,
+                             profit_margin:float,
+                             description=None,
+                             forecast_number=None,
+                             sales_forecast_from_date=None,
+                             sales_forecast_to_date=None,
+
+                             ):
+        #add to menu model (name, size, category, value_added_tax, description, available)
+        new_menu = self.menu.add_menu_item(name, size, category, value_added_tax, serving=True, description=description)
+        if new_menu:
+            #get recipe for menu as a list with dicts of {inventory_id: id, amount: amount}
+            print('a')
+            for item in recipe_items:
+                self.menu.add_recipe_of_menu_item(new_menu.id, item['inventory_id'], item['amount'],user_name, note=item['note'])
+            #will this item change the forecast if do add to forecast model
+            print('b')
+            if not forecast_number:
+                forecast_number = 0
+            self.sales.add_sales_forecast(new_menu.id, forecast_number, sales_forecast_from_date, sales_forecast_to_date)
+            print('c')
+            #need to calculate the estimated menu price data: (profit_margin, manual_price)
+            self.menu_pricing.calculate_updates_new_menu_item(new_menu.id, price, profit_margin, forecast_number)
+            print("d")
+
+            latest_estimation = self.menu_pricing.get_latest_update_price(new_menu.id)
+            return new_menu, latest_estimation
+
+        return False, None

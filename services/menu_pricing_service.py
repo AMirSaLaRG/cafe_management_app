@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, time
 from typing import Optional
 
 from models.dbhandler import DBHandler
-from models.cafe_managment_models import Inventory, Menu, Recipe
+from models.cafe_managment_models import Inventory, Menu, Recipe, EstimatedMenuPriceRecord
 
 
 class MenuPriceService:
@@ -180,7 +180,23 @@ class MenuPriceService:
 
         return True
 
-
+    #____________________________New Item Added___________________________________________________________
+    def calculate_updates_new_menu_item(self,
+                                        menu_id,
+                                        new_manual_price,
+                                        profit_margin,
+                                        fore_cast,
+                                        ):
+        print("r1")
+        self.calculate_manual_price_change(menu_id, new_manual_price, profit_margin, category="NewItem manual")
+        print("r2")
+        self.calculate_update_direct_cost([menu_id], category="NewItem DirectCost")
+        print("r3")
+        if fore_cast:
+            self.calculate_forecast()
+            print("r4")
+        self.calculate_indirect_cost(category="NewItem IndirectCost")
+        print("r5")
     #_____________________________direct cost changes updates______________________________________________
 
     def calculate_update_direct_cost(self, menu_ids:list[int],
@@ -245,11 +261,14 @@ class MenuPriceService:
 
     #_____________________________menu manual changes updates______________________________________________
 
-    def calculate_manual_price_change(self, menu_item_id, new_manual_price:float, category:Optional[str]="Manual Price Change")-> bool:
+    def calculate_manual_price_change(self, menu_item_id, new_manual_price:float=None, profit_margin:float=None, category:Optional[str]="Manual Price Change")-> bool:
         """calculate the manual price change"""
 
 
-        if self._add_new_estimated_record_update_menu_suggestion(only_menu_id=menu_item_id, manual_price=new_manual_price, category=category):
+        if self._add_new_estimated_record_update_menu_suggestion(only_menu_id=menu_item_id,
+                                                                 manual_price=new_manual_price,
+                                                                 profit_margin=profit_margin,
+                                                                 category=category):
             return True
         return False
 
@@ -294,4 +313,13 @@ class MenuPriceService:
 
             return True
         return False
+
+
+    #_________________________________Read ______________________________________________
+    def get_latest_update_price(self, menu_id:int)->Optional[EstimatedMenuPriceRecord]:
+        fetch = self.db.get_estimatedmenupricerecord(id=menu_id)
+        if fetch:
+            return fetch[0]
+        else:
+            return None
 
