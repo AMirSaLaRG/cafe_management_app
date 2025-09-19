@@ -1,4 +1,5 @@
 # cafe_manager.py
+from turtledemo.paint import switchupdown
 
 # Import all the service classes you have created
 from models.dbhandler import DBHandler
@@ -94,3 +95,35 @@ class CafeManager:
             return new_menu, latest_estimation
 
         return False, None
+
+    def update_menu_item(self,
+                         menu_id: int,
+                         name: Optional[str] = None,
+                         size:Optional[str] = None,
+                         category:Optional[str] = None,
+                         value_added_tax:Optional[float] = None,
+                         description:Optional[str] = None,
+                         serving:Optional[bool] = None,
+                         price:Optional[float] = None,
+                         profit_margin:Optional[float] = None,
+                         price_change_category:Optional[str] = None,
+                         ) -> bool:
+
+        if not self.menu.change_attribute_menu_item(
+                menu_id,
+                name=name,
+                size=size,
+                category=category,
+                value_added_tax=value_added_tax,
+                description=description,
+                serving=serving
+        ):
+            return False
+        if price is not None or profit_margin is not None or price_change_category is not None:
+            if not self.menu_pricing.calculate_manual_price_change(menu_id,
+                                                                   price,
+                                                                   profit_margin,
+                                                                   price_change_category):
+                return False
+
+        return True

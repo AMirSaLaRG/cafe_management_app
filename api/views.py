@@ -38,12 +38,12 @@ def create_menu_item(request):
             name=data['name'],
             size=data['size'],
             category=data['category'],
-            value_added_tax= float(data['value_added_tax']),
+            value_added_tax= float(data['value_added_tax']) if data['value_added_tax'] !="" else None,
             recipe_items= data['recipe_items'],
-            price=float(data['price']),
+            price=float(data['price']) if data['price']!="" else None,
             profit_margin=float(data['profit_margin']),
             description=data['description'],
-            forecast_number = data['forecast_number'],
+            forecast_number = int(data['forecast_number']) if data["forecast_number"]!= "" else None,
             sales_forecast_from_date= data['sales_forecast_from_date'],
             sales_forecast_to_date = data['sales_forecast_to_date'],
         )
@@ -63,53 +63,39 @@ def create_menu_item(request):
 
 @api_view(['POST'])
 def edit_menu_item(request):
-    menu_updatables_list = ['name', 'size', 'category', 'value_added_tax', 'description']
+    menu_updatables_list = ['name', 'size', 'category', 'value_added_tax', 'description', 'serving', 'price',
+                            'profit_margin', 'price_change_category']
+    float_list = ["price", "value_added_tax", "profit_margin"]
+    menu_change_kwargs = {}
     try:
         data = request.data
-        target_menu: Optional[Menu] = cafe_manager.menu.get_menu_item(data['id'])
+        if 'menu_id' not in data:
+            return Response({'success': False, 'error': 'menu_id is required'}, status=400)
         for key, value in data.items():
-            #edit menu model
-            menu_change_kwargs = {}
             if key in menu_updatables_list:
-                if value is None:
+                if value == "" or value is None:
                     menu_change_kwargs[key] = None
-                elif value:
-                    menu_change_kwargs[key] = value
+                else:
+                    if key in float_list:
+                        try:
+                            menu_change_kwargs[key] = float(value)
+                        except (ValueError, TypeError):
+                            return Response({'success': False, 'error': f'Invalid {key} value'}, status=400)
+                    elif key == 'serving':
+                        if value in ('1', 1, True, 'true'):
+                            menu_change_kwargs[key] = True
+                        elif value in ('0', 0, False, 'false'):
+                            menu_change_kwargs[key] = False
+                        else:
+                            menu_change_kwargs[key] = None
+                    else:
+                        menu_change_kwargs[key] = value
 
-                cafe_manager.menu.change_attribute_menu_item(target_menu.id, **menu_change_kwargs)
-            #manage active
-            if key == "serving":
-                cafe_manager.menu.change_availability_of_menu_item(target_menu.id, switch_to=value)
+        if not menu_change_kwargs:
+            return Response({'success': False, 'error': 'No valid fields provided'}, status=400)
 
-            if key == "price":
-                cafe_manager.menu_pricing.calculate_manual_price_change(target_menu.id, value)
-
-
-        menu_item, estimation = cafe_manager.create_new_menu_item(
-            user_name=data['user_name'],
-            name=data['name'],
-            size=data['size'],
-            category=data['category'],
-            value_added_tax= float(data['value_added_tax']),
-            recipe_items= data['recipe_items'],
-            price=float(data['price']),
-            profit_margin=float(data['profit_margin']),
-            description=data['description'],
-            forecast_number = data['forecast_number'],
-            sales_forecast_from_date= data['sales_forecast_from_date'],
-            sales_forecast_to_date = data['sales_forecast_to_date'],
-        )
-        print(estimation)
-        if menu_item:
-            if not estimation.estimated_price:
-                price_report = "Not enough data"
-            else:
-                price_report = estimation.estimated_price
-        else:
-            price_report = "This Item Already Exist in Menu"
-
-        return Response({'success': bool(menu_item), "estimated_price":price_report})
+        applied_changes = cafe_manager.update_menu_item(menu_id=int(data['menu_id']), **menu_change_kwargs)
+        return Response({'success': applied_changes})
     except Exception as e:
         return Response({'success': False, 'error': str(e)}, status=500)
-
 

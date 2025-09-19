@@ -26,7 +26,8 @@ class MenuService:
                                    size: Optional[str] = None,
                                    category: Optional[str] = None,
                                    value_added_tax: Optional[float] = None,
-                                   description: Optional[str] = None) -> bool:
+                                   description: Optional[str] = None,
+                                   serving: Optional[bool] = None) -> bool:
 
         fetch_list = self.db.get_menu(id=menu_id)
         if not fetch_list:
@@ -43,6 +44,9 @@ class MenuService:
             menu_item.value_added_tax = value_added_tax
         if description is not None:
             menu_item.description = description
+
+        if serving is not None:
+            menu_item.serving = serving
 
         if self.db.edit_menu(menu_item):
             return True
