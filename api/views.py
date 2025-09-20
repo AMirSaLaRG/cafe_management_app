@@ -21,8 +21,6 @@ cafe_manager = CafeManager(db_handler)
 def menu_items(request):
     try:
         items = cafe_manager.get_menu_with_availability()
-        print(f"DEBUG: Retrieved {len(items)} items")  # Add this
-        print(f"DEBUG: First item: {items[0] if items else 'None'}")  # Add this
         return Response({'success': True, 'items': items})
     except Exception as e:
         return Response({'success': False, 'error': str(e), status: 500})
@@ -99,3 +97,83 @@ def edit_menu_item(request):
     except Exception as e:
         return Response({'success': False, 'error': str(e)}, status=500)
 
+
+@api_view(['GET'])
+def inventory_items(request):
+    try:
+        items = cafe_manager.get_and_format_inventory()
+        print(items)
+        return Response({'success': True, 'items': items})
+    except Exception as e:
+        return Response({'success': False, 'error': str(e), status: 500})
+
+
+@api_view(['POST'])
+def create_inventory_item(request):
+    data = request.data
+    inventory_kwargs = {}
+    # required_fields = ["item_name", "unit", "category", "person_who_added"]
+    float_fields = ['current_stock', 'price_per_unit', 'safety_stock', 'daily_usage']
+    int_fields = ['current_supplier_id']
+    try:
+        for key, value in data.items():
+            if value == "" or value is None:
+                value = None
+            else:
+                if key in float_fields:
+                    try:
+                        value = float(value)
+                    except (ValueError, TypeError):
+                        return Response({'success': False, 'error': f'Invalid {key} value'}, status=400)
+                if key in int_fields:
+                    try:
+                        value = int(value)
+                    except (ValueError, TypeError):
+                        return Response({'success': False, 'error': f'Invalid {key} value'}, status=400)
+
+            inventory_kwargs[key] = value
+
+        try:
+            added_item = cafe_manager.inventory.create_new_inventory_item(**inventory_kwargs)
+
+            return Response({'success': added_item})
+
+        except TypeError as e:
+            return Response({'success': False, 'error': str(e)}, status=400)
+
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
+@api_view(['POST'])
+def edit_inventory_item(request):
+    float_fields = ['current_stock', 'price_per_unit', 'safety_stock', 'daily_usage']
+    int_fields = ['current_supplier_id']
+    inventory_change_kwargs = {}
+    try:
+        data = request.data
+        if 'id' not in data:
+            return Response({'success': False, 'error': 'menu_id is required'}, status=400)
+        for key, value in data.items():
+            if value == "" or value is None:
+                value = None
+            else:
+                if key in float_fields:
+                    try:
+                        value = float(value)
+                    except (ValueError, TypeError):
+                        return Response({'success': False, 'error': f'Invalid {key} value'}, status=400)
+                elif key in int_fields:
+                    try:
+                        value = int(value)
+                    except (ValueError, TypeError):
+                        return Response({'success': False, 'error': f'Invalid {key} value'}, status=400)
+
+            inventory_change_kwargs[key] = value
+
+        if not inventory_change_kwargs:
+            return Response({'success': False, 'error': 'No valid fields provided'}, status=400)
+        #todo make a valid function to edit and update inventory
+        applied_changes = cafe_manager.inventory(menu_id=int(data['menu_id']), **inventory_change_kwargs)
+        return Response({'success': applied_changes})
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)

@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 
 Base = declarative_base()
 #done
+#todo current_price va price perunit che farqi daran fek konam yekish bayad remove she
 class Inventory(Base):
     __tablename__ = 'inventory'
 

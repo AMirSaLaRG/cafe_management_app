@@ -344,9 +344,19 @@ class DBHandler:
                 return None
             with self.Session() as session:
                 try:
+
                     existing = session.get(Menu, menu.id)
                     if not existing:
                         logging.error(f"No menu item found with ID: {menu.id}")
+                        return None
+
+                    existing = session.query(Menu).filter(
+                        Menu.id.is_not(menu.id),
+                        Menu.name.is_(menu.name),
+                        Menu.size.is_(menu.size),
+                    ).first()
+                    if existing:
+                        logging.warning(f"Menu item already exists: {menu.name} ({menu.size})")
                         return None
                     merged_menu = session.merge(menu)
                     session.commit()
@@ -373,6 +383,14 @@ class DBHandler:
 
 
                         if hasattr(obj, 'id') and getattr(obj, 'id', None) is not None:
+                            existing = session.query(Menu).filter(
+                                Menu.id.is_not(obj.id),
+                                Menu.name.is_(obj.name),
+                                Menu.size.is_(obj.size),
+                            ).first()
+                            if existing:
+                                logging.warning(f"Menu item already exists: {obj.name} ({obj.size})")
+                                return None
                             merged_obj = session.merge(obj)
                             updated_objects.append(merged_obj)
                         else:

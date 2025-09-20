@@ -17,7 +17,7 @@ class MenuPriceService:
             return None
         if not indirect_cost:
             indirect_cost = 0
-        if profit_margin < 0:
+        if profit_margin and profit_margin < 0:
             return None
         indirect_cost = indirect_cost / sales_forecast
         direct_cost = direct_cost
@@ -126,34 +126,39 @@ class MenuPriceService:
 
         for menu_id in menu_ids:
             latest_item_records = self.db.get_estimatedmenupricerecord(menu_id=menu_id, row_num=1)
+            try:
+                print(menu_id, latest_item_records[0].manual_price)
+            except:
+                print("wtf could not")
             if not latest_item_records:
                 the_record = None
             else:
                 the_record = latest_item_records[0]
 
-            last_direct_cost = the_record.direct_cost if the_record else 0
-            last_indirect_cost = the_record.estimated_indirect_costs if the_record else 0
-            last_sales_forecast = the_record.sales_forecast if the_record else 0
-            last_profit_margin = the_record.profit_margin if the_record else 0
-            last_manual_price = the_record.manual_price if the_record else 0
+            last_direct_cost = the_record.direct_cost if getattr(the_record, "direct_cost", None)  else 0
+            last_indirect_cost = the_record.estimated_indirect_costs if getattr(the_record, "estimated_indirect_costs", None) else 0
+            last_sales_forecast = the_record.sales_forecast if getattr(the_record, "sales_forecast", None) else 0
+            last_profit_margin = the_record.profit_margin if getattr(the_record, "profit_margin", None) else 0
+            last_manual_price = the_record.manual_price if getattr(the_record, "manual_price", None) else 0
 
-            direct_cost = direct_cost if direct_cost else last_direct_cost
-            indirect_cost = indirect_cost if indirect_cost else last_indirect_cost
-            sales_forecast = sales_forecast if sales_forecast else last_sales_forecast
-            profit_margin = profit_margin if profit_margin else last_profit_margin
-            manual_price = manual_price if manual_price else last_manual_price
+            the_direct_cost = direct_cost if direct_cost else last_direct_cost
+            the_indirect_cost = indirect_cost if indirect_cost else last_indirect_cost
+            the_sales_forecast = sales_forecast if sales_forecast else last_sales_forecast
+            the_profit_margin = profit_margin if profit_margin else last_profit_margin
+            the_manual_price = manual_price if manual_price else last_manual_price
 
-            suggested_price = self._calculate_suggested_price(direct_cost, indirect_cost, sales_forecast, profit_margin)
+            print(the_direct_cost, the_indirect_cost, the_sales_forecast, the_profit_margin)
+            suggested_price = self._calculate_suggested_price(the_direct_cost, the_indirect_cost, the_sales_forecast, the_profit_margin)
             if not suggested_price:
                 suggested_price = None
 
-
+            print(menu_id, the_manual_price)
             new_record =  self.db.add_estimatedmenupricerecord(menu_id=menu_id,
                                                                direct_cost=direct_cost,
                                                                estimated_indirect_costs=indirect_cost,
                                                                sales_forecast=sales_forecast,
                                                                profit_margin=profit_margin,
-                                                               manual_price=manual_price,
+                                                               manual_price=the_manual_price,
                                                                description=description,
                                                                category=category,
                                                                estimated_price=suggested_price
@@ -165,7 +170,7 @@ class MenuPriceService:
                 else:
                     print("not in menu")
                     continue
-                update_menu.current_price = manual_price
+                update_menu.current_price = the_manual_price
 
 
                 if suggested_price:

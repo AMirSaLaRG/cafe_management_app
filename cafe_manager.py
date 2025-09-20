@@ -51,11 +51,11 @@ class CafeManager:
 
         for item in serving_menu:
             available, missing_items, number_available = self.inventory.check_stock_for_menu(item)
+            columns = item.__table__.columns.keys()
+            clean_data = {column: getattr(item, column) for column in columns}
+            clean_data['number_available'] = number_available
 
-            available_items.append({
-                "id": item.id,
-                "max_to_make": number_available
-            })
+            available_items.append(clean_data)
 
         return available_items
 
@@ -77,22 +77,27 @@ class CafeManager:
         #add to menu model (name, size, category, value_added_tax, description, available)
         new_menu = self.menu.add_menu_item(name, size, category, value_added_tax, serving=True, description=description)
         if new_menu:
-            #get recipe for menu as a list with dicts of {inventory_id: id, amount: amount}
-            print('a')
-            for item in recipe_items:
-                self.menu.add_recipe_of_menu_item(new_menu.id, item['inventory_id'], item['amount'],user_name, note=item['note'])
-            #will this item change the forecast if do add to forecast model
-            print('b')
-            if not forecast_number:
-                forecast_number = 0
-            self.sales.add_sales_forecast(new_menu.id, forecast_number, sales_forecast_from_date, sales_forecast_to_date)
-            print('c')
-            #need to calculate the estimated menu price data: (profit_margin, manual_price)
-            self.menu_pricing.calculate_updates_new_menu_item(new_menu.id, price, profit_margin, forecast_number)
-            print("d")
+            actions = []
+            try:
+                #get recipe for menu as a list with dicts of {inventory_id: id, amount: amount}
+                print('a')
+                for item in recipe_items:
+                    self.menu.add_recipe_of_menu_item(new_menu.id, item['inventory_id'], item['amount'],user_name, note=item['note'])
+                #will this item change the forecast if do add to forecast model
+                print('b')
+                if not forecast_number:
+                    forecast_number = 0
+                self.sales.add_sales_forecast(new_menu.id, forecast_number, sales_forecast_from_date, sales_forecast_to_date)
+                print('c')
+                #need to calculate the estimated menu price data: (profit_margin, manual_price)
+                self.menu_pricing.calculate_updates_new_menu_item(new_menu.id, price, profit_margin, forecast_number)
+                print("d")
 
-            latest_estimation = self.menu_pricing.get_latest_update_price(new_menu.id)
-            return new_menu, latest_estimation
+                latest_estimation = self.menu_pricing.get_latest_update_price(new_menu.id)
+                return new_menu, latest_estimation
+            except Exception as e:
+                for action in actions:
+                    print(action)
 
         return False, None
 
@@ -127,3 +132,16 @@ class CafeManager:
                 return False
 
         return True
+
+
+    def get_and_format_inventory(self):
+        raw_items = self.inventory.db.get_inventory()
+        formatted_items = []
+
+        for raw_item in raw_items:
+            columns = raw_item.__table__.columns.keys()
+            formatted_item = {column: getattr(raw_item, column) for column in columns}
+            formatted_items.append(formatted_item)
+
+        return formatted_items
+

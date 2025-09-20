@@ -1,7 +1,7 @@
 from typing import Optional
 
 from models.dbhandler import DBHandler
-from models.cafe_managment_models import Inventory, Menu, Recipe
+from models.cafe_managment_models import Inventory, Menu, Recipe, EstimatedMenuPriceRecord
 
 
 class MenuService:
@@ -94,14 +94,12 @@ class MenuService:
                                 inventory_id,
                                 amount,
                                 writer,
-                                note:Optional[str]=None) -> bool:
-        if self.db.add_recipe(inventory_id=inventory_id,
-                           menu_id=menu_id,
-                           inventory_item_amount_usage=amount,
-                           writer=writer,
-                           description=note):
-            return True
-        return False
+                                note:Optional[str]=None) -> Recipe:
+        return self.db.add_recipe(inventory_id=inventory_id,
+                                   menu_id=menu_id,
+                                   inventory_item_amount_usage=amount,
+                                   writer=writer,
+                                   description=note)
 
     def change_recipe_of_menu_item(self, menu_id, inventory_id,
                                    amount:Optional[float]=None,

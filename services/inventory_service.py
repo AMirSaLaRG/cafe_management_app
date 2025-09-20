@@ -334,7 +334,7 @@ class InventoryService:
                                   daily_usage:float = None,
                                   safety_stock:float=None,
                                   price_per_unit:float=None,
-                                  current_stock:float=0):
+                                  current_stock:float=None):
 
 
         # name unit category is basic of an inventory item to add to inventory model
@@ -349,7 +349,7 @@ class InventoryService:
             return False
         # if there is a current_stock we should add restock_by_inventory_item request
         if self.manual_report(inventory_id=new_item.id,
-                              amount=current_stock,
+                              amount=current_stock if current_stock else 0,
                               reporter=person_who_added,
                               reason=INITIATE_STOCK_CATEGORY, ):
             return True
