@@ -23,7 +23,7 @@ def menu_items(request):
         items = cafe_manager.get_menu_with_availability()
         return Response({'success': True, 'items': items})
     except Exception as e:
-        return Response({'success': False, 'error': str(e), status: 500})
+        return Response({'success': False, 'error': str(e)}, status=500)
 
 @api_view(['POST'])
 def create_menu_item(request):
@@ -105,7 +105,7 @@ def inventory_items(request):
         print(items)
         return Response({'success': True, 'items': items})
     except Exception as e:
-        return Response({'success': False, 'error': str(e), status: 500})
+        return Response({'success': False, 'error': str(e)}, status=500)
 
 
 @api_view(['POST'])
@@ -181,3 +181,61 @@ def edit_inventory_item(request):
         return Response({'success': applied_changes})
     except Exception as e:
         return Response({'success': False, 'error': str(e)}, status=500)
+
+@api_view(['POST'])
+def add_new_recipe(request):
+    try:
+        data = request.data
+        add_recipe_kwargs = {}
+        int_field = ["inventory_id", "menu_id"]
+        float_field = ['amount']
+        if "inventory_id" not in data or "menu_id" not in data:
+            return Response({'success': False, 'error': 'menu_id and inventory_id are required'}, status=400)
+
+        for key, value in data.items():
+            if value == "" or value is None:
+                value = None
+            else:
+                if key in float_field:
+                    value = float(value)
+                if key in int_field:
+                    value = int(value)
+
+            add_recipe_kwargs[key] = value
+        print(add_recipe_kwargs)
+        added_recipe = cafe_manager.create_new_recipe(**add_recipe_kwargs)
+        return Response({'success': added_recipe})
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
+
+@api_view(['POST'])
+def update_remove_recipe(request):
+    try:
+        data = request.data
+        float_fields = ['amount']
+        update_kwargs = {}
+
+        if 'menu_id' not in data or "inventory_id" not in data:
+            return Response({'success': False, 'error': 'menu_id and inventory_id are required'}, status=400)
+
+        for key, value in data.items():
+            if value == "" or value is None:
+                value = None
+            else:
+                if key in float_fields:
+                    value = float(value)
+                if key == "delete":
+                    if value in (True, 'true', 1, "1"):
+                        value = True
+                    else:
+                        value = False
+
+            update_kwargs[key] = value
+
+        approve_change = cafe_manager.update_remove_recipe(**update_kwargs)
+        return Response({'success': approve_change})
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
+

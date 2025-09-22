@@ -101,15 +101,24 @@ class MenuService:
                                    writer=writer,
                                    description=note)
 
-    def change_recipe_of_menu_item(self, menu_id, inventory_id,
+    def change_recipe_of_menu_item(self,
+                                   menu_id,
+                                   inventory_id,
                                    amount:Optional[float]=None,
                                    writer:Optional[str]=None,
-                                   note:Optional[str]=None) -> bool:
+                                   note:Optional[str]=None,
+                                   delete:bool = False) -> bool:
         catch_recipe_list = self.db.get_recipe(menu_id=menu_id, inventory_id=inventory_id)
         if not catch_recipe_list:
             return False
-
         recipe = catch_recipe_list[0]
+
+        if delete:
+            if self.db.delete_recipe(recipe):
+                return True
+            else:
+                return False
+
         if amount is not None:
             recipe.inventory_item_amount_usage = amount
         if writer is not None:

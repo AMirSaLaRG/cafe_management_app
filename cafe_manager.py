@@ -146,3 +146,21 @@ class CafeManager:
 
         return formatted_items
 
+
+    def create_new_recipe(self, **kwargs):
+        if self.menu.add_recipe_of_menu_item(**kwargs):
+            if self.menu_pricing.calculate_update_direct_cost(menu_ids=[kwargs['menu_id']], category='Recipe Change'):
+                return True
+
+        return False
+
+    def update_remove_recipe(self, **kwargs):
+        if self.menu.change_recipe_of_menu_item(**kwargs):
+            if 'amount' in kwargs and kwargs['amount']:
+                if self.menu_pricing.calculate_update_direct_cost(menu_ids=[kwargs['menu_id']], category='Recipe Change'):
+                    return True
+            if 'delete' in kwargs and kwargs['delete']:
+                if self.menu_pricing.calculate_update_direct_cost(menu_ids=[kwargs['menu_id']], category='Recipe Change'):
+                    return True
+
+        return False

@@ -806,7 +806,6 @@ class DBHandler:
                  description:Optional[str]=None,
                  ) -> Optional[Recipe]:
         """ adding new recipe  """
-
         if inventory_item_amount_usage is not None and inventory_item_amount_usage < 0:
             logging.error("inventory_item_amount_usage: value cant be negative")
             return None
