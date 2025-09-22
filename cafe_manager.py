@@ -54,7 +54,8 @@ class CafeManager:
             columns = item.__table__.columns.keys()
             clean_data = {column: getattr(item, column) for column in columns}
             clean_data['number_available'] = number_available
-
+            recipe_dict = {recipe.inventory.name:recipe.inventory_item_amount_usage for recipe in item.recipe}
+            clean_data['recipes'] = recipe_dict
             available_items.append(clean_data)
 
         return available_items

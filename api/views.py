@@ -148,13 +148,17 @@ def create_inventory_item(request):
 def edit_inventory_item(request):
     float_fields = ['current_stock', 'price_per_unit', 'safety_stock', 'daily_usage']
     int_fields = ['current_supplier_id']
+    not_available_fields = []
     inventory_change_kwargs = {}
     try:
         data = request.data
         if 'id' not in data:
             return Response({'success': False, 'error': 'menu_id is required'}, status=400)
+        if 'user_name' not in data:
+            return Response({'success': False, 'error': 'user_name is required'}, status=400)
+
         for key, value in data.items():
-            if value == "" or value is None:
+            if value == "" or value is None or value in not_available_fields:
                 value = None
             else:
                 if key in float_fields:
@@ -172,8 +176,8 @@ def edit_inventory_item(request):
 
         if not inventory_change_kwargs:
             return Response({'success': False, 'error': 'No valid fields provided'}, status=400)
-        #todo make a valid function to edit and update inventory
-        applied_changes = cafe_manager.inventory(menu_id=int(data['menu_id']), **inventory_change_kwargs)
+
+        applied_changes = cafe_manager.inventory.update_inventory_item(**inventory_change_kwargs)
         return Response({'success': applied_changes})
     except Exception as e:
         return Response({'success': False, 'error': str(e)}, status=500)

@@ -525,4 +525,4 @@ class RecordEmployeePayment(Base):
 
 
 
-render_er(Base, 'erd_from_sqlalchemy.png')
+# render_er(Base, 'erd_from_sqlalchemy.png')

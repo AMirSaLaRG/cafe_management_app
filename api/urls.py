@@ -8,6 +8,7 @@ urlpatterns = [
     path('menu/edit/', views.edit_menu_item, name='edit-menu-item'),
     path('inventory/', views.inventory_items, name='inventory-items'),
     path('inventory/create/', views.create_inventory_item, name='crete-inventory-item'),
+    path('inventory/edit/', views.edit_inventory_item, name='edit-inventory-item'),
 
 ]
 

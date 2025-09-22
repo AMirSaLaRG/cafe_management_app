@@ -163,6 +163,7 @@ class DBHandler:
                 logging.error(f"No inventory item found with ID: {inventory.id}")
                 return None
             try:
+
                 merged_inventory = session.merge(inventory)
                 session.commit()
                 session.refresh(merged_inventory)

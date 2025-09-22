@@ -357,6 +357,36 @@ class InventoryService:
 
         return False
 
+    def update_inventory_item(self,
+                                id:int,
+                                user_name:str,
+                                **kwargs) -> bool:
+
+        the_record = True
+        try:
+            the_item = self.db.get_inventory(id=id)[0]
+        except:
+            return False
+
+        available_kwargs = the_item.__table__.columns.keys()
+        for key, value in kwargs.items():
+            if key in available_kwargs:
+                if hasattr(the_item, key) and key is not "current_stock":
+                    setattr(the_item, key, value)
+        updated = self.db.edit_inventory(the_item)
+
+        if kwargs['current_stock']:
+            the_record = self.manual_report(inventory_id=the_item.id,
+                              amount=kwargs['current_stock'] if kwargs['current_stock'] else 0,
+                              reporter=user_name,
+                              reason=kwargs['stock_change_reason'] if kwargs['stock_change_reason'] else "Changed by Update", )
+
+        if not the_item or the_record is False or not updated:
+            return False
+
+        return True
+
+
     def change_daily_usage(self, inventory_id:int, new_daily_usage:float) -> bool:
         search_list = self.db.get_inventory(id=inventory_id)
         if search_list and new_daily_usage>=0:
