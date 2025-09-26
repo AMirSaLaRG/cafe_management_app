@@ -54,8 +54,19 @@ class CafeManager:
             columns = item.__table__.columns.keys()
             clean_data = {column: getattr(item, column) for column in columns}
             clean_data['number_available'] = number_available
-            recipe_dict = {recipe.inventory.name:recipe.inventory_item_amount_usage for recipe in item.recipe}
-            clean_data['recipes'] = recipe_dict
+            if item.recipe:
+                clean_data['recipes'] = [
+                    {
+                        'inventory_id': recipe.inventory_id,
+                        'inventory_name': recipe.inventory_item.name,
+                        'amount': recipe.inventory_item_amount_usage,
+                        'writer': recipe.writer,
+                        'description': recipe.description
+                    } for recipe in item.recipe
+                ]
+            else:
+                clean_data['recipes'] = []
+
             available_items.append(clean_data)
 
         return available_items
@@ -164,3 +175,118 @@ class CafeManager:
                     return True
 
         return False
+
+    def serialization_suppliers(self):
+        list_serialization_supplier = []
+        fetch_suppliers = self.supplier.db.get_supplier()
+        try:
+            for supplier in fetch_suppliers:
+                list_serialization_supplier.append({
+                    'id': supplier.id,
+                    'name': supplier.name,
+                    'load_time_hr': supplier.load_time_hr,
+                    'contact_channel': supplier.contact_channel,
+                    'contact_address': supplier.contact_address,
+                })
+        except Exception as e:
+            return False, e
+        return list_serialization_supplier
+
+    def supplier_editor(self, **kwargs):
+        editing = Supplier()
+        for key, value in kwargs.items():
+            setattr(editing, key, value)
+        return self.supplier.db.edit_supplier(editing)
+
+    #todo time missing from order Important
+    def get_serialization_ordes_in_detail(self):
+        details = self.supplier.db.get_orderdetail()
+        if details:
+            serialization = [
+
+            ]
+            orders = {}
+            for each_detail in details:
+                inventory_detail = {
+                    'inventory_id': each_detail.inventory_item.id,
+                                  'inventory_name': each_detail.inventory_item.name,
+                                  'unit': each_detail.inventory_item.unit,
+                                  'box_amount': each_detail.box_amount,
+                                  'approver': each_detail.approver,
+                                  'box_price': each_detail.box_price,
+                                  'overall_discount': each_detail.overall_discount,
+                                  'boxes_ordered': each_detail.boxes_ordered,
+                                  'numbers_of_box_shipped': each_detail.numbers_of_box_shipped,
+                                  'numbers_of_box_received': each_detail.numbers_of_box_received,
+                                  'numbers_of_box_approved': each_detail.numbers_of_box_approved,
+                                  'numbers_of_box_rejected': each_detail.numbers_of_box_rejected,
+                                  'status': each_detail.status,
+                                  'description': each_detail.description,
+                                  'ship': {
+                                      'shipper': each_detail.ship.shipper,
+                                      'shipper_contact': each_detail.ship.shipper_contact,
+                                      'price': each_detail.ship.price,
+                                      'receiver': each_detail.ship.receiver,
+                                      'payer': each_detail.ship.payer,
+                                      'shipped_date': each_detail.ship.shipped_date,
+                                      'received_date': each_detail.ship.received_date,
+                                      'description': each_detail.ship.description,
+                                  },
+                                  },
+                only_orders_detail = {
+                    'order': {'order_id': each_detail.order_id,
+                              'date': each_detail.order.date,
+                              'supplier_id': each_detail.order.supplier_id,
+                              'real_load_time_hr': each_detail.order.real_load_time_hr,
+                              'total_price': each_detail.order.total_price,
+                              'buyer': each_detail.order.buyer,
+                              'payer': each_detail.order.payer,
+                              "status": each_detail.order.status,
+                              "description": each_detail.order.description,
+                              },
+                }
+                if each_detail.order_id in orders:
+                    orders[each_detail.order_id]['order']['inventory_detail'].append(inventory_detail)
+                else:
+                    orders[each_detail.order_id] = only_orders_detail
+                    orders[each_detail.order_id]['order']['inventory_detail'] = inventory_detail
+
+            serialization.append(orders)
+            return serialization
+        else:
+            return None
+
+    def update_shipper_info(self, **kwargs):
+        the_id = kwargs['id']
+
+        try:
+            the_order_detail = self.supplier.db.get_orderdetail(id=the_id)[0]
+        except Exception as e:
+            return None
+
+        self.supplier.receive_order(
+            the_order_detail.order_id,
+            the_order_detail.inventory_id,
+            receiver_name=kwargs['receiver'],
+            number_of_box_received= kwargs['number_received'],
+            number_of_box_shipped= kwargs['number_shipped']
+        )
+
+        if the_order_detail.ship_id:
+            ship = the_order_detail.ship
+            for key, value in kwargs.items():
+                if hasattr(ship, key) and key != "id":
+                    setattr(ship, key, value)
+
+
+            return self.supplier.db.edit_ship(ship)
+
+
+        else:
+            the_ship_info = self.supplier.add_shipment(**kwargs)
+            the_order_detail.ship_id = the_ship_info.id
+            return the_ship_info
+
+
+    def checked_received_items(self, **kwargs):
+        self.supplier.inspect_received_order(**kwargs)

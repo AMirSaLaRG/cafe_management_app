@@ -1243,7 +1243,7 @@ class DBHandler:
                     return None
                 merged_order  = session.merge(order)
                 session.commit()
-                session.refresh(merged_order )
+                session.refresh(merged_order)
                 logging.info(f"Successfully updated order with ids: {order.id}")
                 return merged_order
             except Exception as e:
@@ -1464,7 +1464,7 @@ class DBHandler:
                      inventory_id:int,
                      order_id:int,
                      ship_id:Optional[int]=None,
-                     receiver:Optional[str]=None,
+                     approver:Optional[str]=None,
                      box_amount:Optional[float]=None,
                      box_price:Optional[float]=None,
                      overall_discount:Optional[float]=None,
@@ -1482,9 +1482,19 @@ class DBHandler:
 
         with self.Session() as session:
             try:
+                exist_order = session.query(Order).filter(Order.id.is_(order_id)).first()
+                if not exist_order:
+                    logging.error(f"Order id {order_id} not found.")
+                    return None
 
-                if receiver is not None:
-                    receiver = receiver.strip().lower()
+                exist_inventory = session.query(Inventory).filter(Inventory.id.is_(inventory_id)).first()
+                if not exist_inventory:
+                    logging.error(f"inventory item id {inventory_id} not found.")
+                    return None
+
+
+                if approver is not None:
+                    approver = approver.strip().lower()
 
                 if status is not None:
                     status = status.strip().lower()
@@ -1544,7 +1554,7 @@ class DBHandler:
                     inventory_id=inventory_id,
                     order_id=order_id,
                     ship_id=ship_id,
-                    receiver=receiver,
+                    approver=approver,
                     box_amount=box_amount,
                     box_price=box_price,
                     overall_discount=overall_discount,
@@ -1574,7 +1584,7 @@ class DBHandler:
             inventory_id:Optional[int]=None,
             order_id:Optional[int]=None,
             ship_id:Optional[int]=None,
-            receiver:Optional[str]=None,
+            approver:Optional[str]=None,
             status:Optional[str]=None,
             has_reject: bool=False,
             row_num: Optional[int] = None
@@ -1626,9 +1636,9 @@ class DBHandler:
                             return []
                         query = query.filter_by(inventory_id=inventory_id)
 
-                    if receiver is not None:
-                        receiver = receiver.lower().strip()
-                        query = query.filter_by(receiver=receiver)
+                    if approver is not None:
+                        approver = approver.lower().strip()
+                        query = query.filter_by(approver=approver)
 
                     if status is not None:
                         status = status.lower().strip()
@@ -1660,7 +1670,7 @@ class DBHandler:
         Returns:
             The updated OrderDetail if successful, None on error.
         """
-        fields_to_process = ["receiver", "status"]
+        fields_to_process = ["approver", "status"]
         for field in fields_to_process:
             value = getattr(detail, field, None)
             if isinstance(value, str):

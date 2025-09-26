@@ -175,7 +175,7 @@ class OrderDetail(Base):
     inventory_id = Column(ForeignKey('inventory.id'), nullable=False)
     order_id = Column(ForeignKey('order.id'), nullable=False)
     ship_id = Column(ForeignKey('ship.id'))
-    receiver = Column(String)
+    approver = Column(String)
     box_amount = Column(Float)
     box_price = Column(Float)
     overall_discount = Column(Float)

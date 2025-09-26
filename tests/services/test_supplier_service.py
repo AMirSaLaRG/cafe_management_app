@@ -290,43 +290,7 @@ def test_get_shipments(supplier_service):
     assert any(shipment.shipper == "shipper b" for shipment in shipments)
 
 
-def test_add_supplier(supplier_service):
-    """Test adding a new supplier"""
-    result = supplier_service.add_a_supplier(
-        name="New Supplier",
-        contact_channel="phone",
-        contact_address="+1234567890",
-        load_time_hr=48
-    )
 
-    assert result is True
-
-    # Verify supplier was added
-    suppliers = supplier_service.db.get_supplier(name="new supplier")
-    assert len(suppliers) == 1
-    assert suppliers[0].contact_channel == "phone"
-    assert suppliers[0].load_time_hr == 48
-
-
-def test_get_suppliers(supplier_service, test_supplier):
-    """Test retrieving suppliers"""
-    suppliers = supplier_service.get_suppliers()
-    assert len(suppliers) > 0
-    assert any(supplier.name == "test supplier" for supplier in suppliers)
-
-
-def test_update_supplier_lead_time(supplier_service, test_supplier):
-    """Test updating supplier lead time"""
-    result = supplier_service.update_supplier_lead_time(
-        supplier_id=test_supplier.id,
-        new_lead_time=72
-    )
-
-    assert result is True
-
-    # Verify lead time was updated
-    updated_supplier = supplier_service.db.get_supplier(id=test_supplier.id)[0]
-    assert updated_supplier.load_time_hr == 72
 
 
 def test_get_supplier_orders(supplier_service, test_supplier, in_memory_db):

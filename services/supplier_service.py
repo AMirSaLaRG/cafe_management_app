@@ -4,10 +4,22 @@ from typing import Optional
 
 from models.dbhandler import DBHandler
 from models.cafe_managment_models import Supplier, Order, Ship, OrderDetail
-
+#todo ship or receives can should be many to many but now is one to many
 class SupplierService:
     def __init__(self, db_handler: DBHandler):
         self.db = db_handler
+
+    def _check_status_order(self, order_id):
+        try:
+            the_order = self.db.get_order(id=order_id)[0]
+        except:
+            return None
+        detail_stat = [item.status for item in the_order.order_details]
+        if len(detail_stat) == len(set(detail_stat)):
+            the_order.status = detail_stat[0]
+            self.db.edit_order(the_order)
+
+
 
     #Missing Status: There's no status for "partially approved" or "pending inspection".
     def _check_status_detail(self, order_id, item_id):
@@ -23,14 +35,21 @@ class SupplierService:
             if the_check_detail.numbers_of_box_received is not None:
                 if the_check_detail.numbers_of_box_rejected and the_check_detail.numbers_of_box_rejected > 0:
                     status = "rejected"
+
                 elif the_check_detail.boxes_ordered > the_check_detail.numbers_of_box_received:
                     status = "shortage"
+
+                elif the_check_detail.boxes_ordered < the_check_detail.numbers_of_box_received:
+                    status = "overage"
+
                 elif the_check_detail.boxes_ordered == the_check_detail.numbers_of_box_received:
                     status = "received"
 
 
+
         if status:
             the_check_detail.status = status
+
             return bool(self.db.edit_orderdetail(the_check_detail))
         return True
 
@@ -43,13 +62,13 @@ class SupplierService:
                      buyer:str,
                      payer:str,
                      order_date=None,
-                     description=None) -> bool:
-        return bool(self.db.add_order(supplier_id=supplier_id,
+                     description=None) -> Optional[OrderDetail]:
+        return self.db.add_order(supplier_id=supplier_id,
                           buyer=buyer,
                           payer=payer,
                           date=order_date,
                           description=description,
-                          status="Opened"))
+                          status="Opened")
 
     def get_open_orders(self):
         return self.db.get_order(status="Opened")
@@ -88,48 +107,81 @@ class SupplierService:
         return False
 
     def add_item_to_order(self,
-                          order_id:int,
                           inventory_id:int,
                           num_box_ordered:float,
+                          order_id:Optional[int] = None,
+                          supplier_id:Optional[int] = None,
+                          buyer:Optional[str] = None,
+                          payer:Optional[str] = None,
+                          order_date:Optional[datetime] = None,
+                          order_description:Optional[str] = None,
                           box_amount: float = None,
                           box_price: float = None,
-                          expected_delivery_date:Optional[datetime] = None,
                           overall_discount: Optional[float] = None,
-                          ) ->bool:
+                          expected_delivery_date:Optional[datetime] = None,
+                          shipper_id:Optional[int] = None,
+                          shipper_name:Optional[str] = None,
+                          shipper_contact:Optional[str] = None,
+                          shipper_price:Optional[float] = None,
+                          shipper_payer:Optional[str] = None,
+                          ) :
+        created_ship = None
+        created_order = None
+        if not order_id:
+            created_order = self.create_order(supplier_id,
+                                              buyer,
+                                              payer,
+                                              order_date,
+                                              order_description)
+            order_id = created_order.id
+
+        if not order_id:
+            return None
+
+        if shipper_id or shipper_name:
+            if not shipper_id:
+                created_ship = self.add_shipment(
+                    shipper_name,
+                    shipper_contact,
+                    shipper_price,
+                    shipper_payer,
+                )
+                shipper_id = created_ship.id
+        if not shipper_id:
+            if created_order:
+                self.db.delete_order(created_order)
+            return None
+
+        order_detail = self.db.add_orderdetail(inventory_id=inventory_id,
+                                               order_id=order_id,
+                                               ship_id=shipper_id,
+                                               boxes_ordered=num_box_ordered,
+                                               expected_delivery_date=expected_delivery_date,
+                                               box_amount=box_amount,
+                                               box_price=box_price,
+                                               overall_discount=overall_discount, )
 
 
-        exist = self.db.get_orderdetail(order_id=order_id, inventory_id=inventory_id)
-        if exist:
-            order_detail = exist[0]
-            if box_amount and order_detail.box_amount == box_amount:
-                ordered_boxes = order_detail.boxes_ordered or 0
-                the_current_price = order_detail.box_price or 0
-                box_price = box_price or 0
-                overall_discounted = order_detail.overall_discount or 0
-                overall_discount = overall_discount or 0
-
-                order_detail.boxes_ordered = ordered_boxes + num_box_ordered
-                order_detail.overall_discount = overall_discounted + overall_discount
-                order_detail.box_price = the_current_price + box_price
-
-                return bool(self.db.edit_orderdetail(order_detail))
+        if not order_detail:
+            if created_order:
+                self.db.delete_order(created_order)
+            if created_ship:
+                self.db.delete_ship(created_ship)
+            return None
 
 
+        self.update_order_total_price(order_id)
+        return True
 
-        return bool(self.db.add_orderdetail(inventory_id=inventory_id,
-                                order_id=order_id,
-                                boxes_ordered=num_box_ordered,
-                                expected_delivery_date=expected_delivery_date,
-                                box_amount=box_amount,
-                                box_price=box_price,
-                                overall_discount=overall_discount,))
+
 
 
     def receive_order(self,
                       order_id:int,
                       inventory_id:int,
                       receiver_name:str,
-                      number_of_box_received:float,
+                      number_of_box_received:float = 0,
+                      number_of_box_shipped:float = 0,
                       ship_id:Optional[int]=None,
                       date:Optional[datetime]=None) -> bool:
 
@@ -141,18 +193,23 @@ class SupplierService:
 
 
         the_order_detail = order_detail_fetch[0]
+        ship_id = the_order_detail.ship_id
+        ship = self.get_shipments(ship_id)[0]
+        ship.receiver = receiver_name
+        self.db.edit_ship(ship)
 
         received_before = the_order_detail.numbers_of_box_received or 0
-        receiver_before = the_order_detail.receiver or ""
+        shipped_before = the_order_detail.numbers_of_box_shipped or 0
 
         the_order_detail.numbers_of_box_received = received_before + number_of_box_received
-        the_order_detail.receiver = f'{receiver_before} {receiver_name}'
+        the_order_detail.numbers_of_box_shipped = shipped_before + number_of_box_shipped
         the_order_detail.actual_delivery_date = date
         if ship_id is not None:
             the_order_detail.ship_id = ship_id
         if not self.db.edit_orderdetail(the_order_detail):
             return False
         self._check_status_detail(the_order_detail.order_id, the_order_detail.inventory_id)
+        self._check_status_order(order_id)
         return True
 
     def inspect_received_order(self,
@@ -160,21 +217,33 @@ class SupplierService:
                                inventory_id:int,
                                approved: float,
                                rejected: float,
-                               replace_rejected: float) -> bool:
+                               approver: str,
+                               replace_rejected: float = None,
+                               description: str = None) -> bool:
         order_detail_fetch = self.db.get_orderdetail(order_id=order_id, inventory_id=inventory_id)
         if not order_detail_fetch:
             return False
         the_order_detail = order_detail_fetch[0]
         approved_before = the_order_detail.numbers_of_box_approved or 0
         rejected_before = the_order_detail.numbers_of_box_rejected or 0
+        if not replace_rejected:
+            replace_rejected = 0
+        if not approved:
+            approved = 0
+        if not rejected:
+            rejected = 0
 
-
-        the_order_detail.numbers_of_box_approved = approved_before + approved
-        the_order_detail.numbers_of_box_rejected = rejected_before + rejected - replace_rejected
-
+        if approved:
+            the_order_detail.numbers_of_box_approved = approved_before + approved
+        if replace_rejected:
+            the_order_detail.numbers_of_box_rejected = rejected_before + rejected - replace_rejected
+        the_order_detail.approver = approver
+        if description:
+            the_order_detail.description = description
         if not self.db.edit_orderdetail(the_order_detail):
             return False
         self._check_status_detail(the_order_detail.order_id, the_order_detail.inventory_id)
+        self._check_status_order(order_id)
         return True
 #___shipment____
     def add_shipment(self,
@@ -221,28 +290,7 @@ class SupplierService:
         )
     #____ supplier _____
 
-    def add_a_supplier(self, name: str,
-                       contact_channel: str,
-                       contact_address: str,
-                       load_time_hr: int) -> bool:
-        return bool(self.db.add_supplier(name,
-                             contact_channel=contact_channel,
-                             contact_address=contact_address,
-                             load_time_hr=load_time_hr))
 
-    def get_suppliers(self, id:Optional[int]=None, name:Optional[str]=None) -> Optional[list[Supplier]]:
-        fetch = self.db.get_supplier(id=id, name=name)
-        if not fetch:
-            return []
-        return fetch
-
-    def update_supplier_lead_time(self, supplier_id: int, new_lead_time: int) -> bool:
-        """Update a supplier's lead time"""
-        supplier = self.db.get_supplier(id=supplier_id)
-        if not supplier:
-            return False
-        supplier[0].load_time_hr = new_lead_time
-        return bool(self.db.edit_supplier(supplier[0]))
 
     def get_supplier_orders(self, supplier_id: int, status: Optional[str] = None) -> list[Order]:
         """Get all orders for a specific supplier"""

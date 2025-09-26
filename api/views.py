@@ -25,6 +25,7 @@ def menu_items(request):
     except Exception as e:
         return Response({'success': False, 'error': str(e)}, status=500)
 
+
 @api_view(['POST'])
 def create_menu_item(request):
     #todo check recipe items
@@ -238,4 +239,156 @@ def update_remove_recipe(request):
     except Exception as e:
         return Response({'success': False, 'error': str(e)}, status=500)
 
+
+@api_view(['get'])
+def get_suppliers(request):
+    try:
+        suppliers = cafe_manager.serialization_suppliers()
+        print(suppliers)
+        print(request.query_params)
+        if suppliers:
+            return Response({'success': True, 'suppliers': suppliers})
+        else:
+            return Response({'success': False, "error":'No suppliers'}, status=500)
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
+@api_view(['POST'])
+def add_new_supplier(request):
+    try:
+        data = request.data
+        add_supplier_kwargs = {}
+
+        int_field = ['load_time_hr']
+        for key, value in data.items():
+            if value == "" or value is None:
+                value = None
+            else:
+                if key in int_field:
+                    value = int(value)
+
+            add_supplier_kwargs[key] = value
+
+        added = cafe_manager.inventory.db.add_supplier(**add_supplier_kwargs)
+        if added:
+            return Response({'success': True})
+        else:
+            return Response({'success': False, 'error': 'Could not add supplier'}, status=500)
+
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
+@api_view(['POST'])
+def editing_the_supplier(request):
+    try:
+        data = request.data
+        edit_supplier_kwargs = {}
+
+        int_field = ['load_time_hr', "id"]
+        for key, value in data.items():
+            if value == "" or value is None:
+                value = None
+            else:
+                if key in int_field:
+                    value = int(value)
+
+            edit_supplier_kwargs[key] = value
+
+        added = cafe_manager.supplier_editor(**edit_supplier_kwargs)
+        print(bool(added))
+        if added:
+            return Response({'success': True})
+        else:
+            return Response({'success': False, 'error': 'Could not edit supplier'}, status=500)
+
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
+@api_view(['GET'])
+def get_order_details(request):
+    try:
+        order_details = cafe_manager.get_serialization_ordes_in_detail()
+        if order_details:
+            return Response({'success': True, 'orders': order_details})
+        else:
+            return Response({'success': False, 'error': 'Could not get orders'}, status=500)
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
+@api_view(['POST'])
+def add_order_detailed(request):
+    data = request.data
+    add_order_detail_kwargs = {}
+    int_fields = ['supplier_id', 'order_id', "supplier_id"]
+    float_fields = ['box_amount', 'box_price', 'overall_discount', 'num_box_ordered', 'shipper_price']
+    try:
+        for key, value in data.items():
+            if value == "" or value is None:
+                value = None
+            else:
+                if key in int_fields:
+                    value = int(value)
+                if key in float_fields:
+                    value = float(value)
+
+            add_order_detail_kwargs[key] = value
+
+        approved = cafe_manager.supplier.add_item_to_order(**add_order_detail_kwargs)
+        if approved:
+            return Response({'success': True})
+        else:
+            return Response({'success': False, 'error': 'Could not add order'}, status=500)
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
+@api_view(['POST'])
+def update_shipment_info(request):
+    data = request.data
+    update_shipment_info_kwargs = {}
+    int_fields = ['shipper_id', 'number_shipped', "number_received"]
+    float_fields = ['price']
+    try:
+        for key, value in data.items():
+            if value == "" or value is None:
+                value = None
+            else:
+                if key in int_fields:
+                    value = int(value)
+                if key in float_fields:
+                    value = float(value)
+            update_shipment_info_kwargs[key] = value
+
+        updated = cafe_manager.update_shipper_info(**update_shipment_info_kwargs)
+        if updated:
+            return Response({'success': True})
+        else:
+            return Response({'success': False, 'error': 'Could not update shipment info'}, status=500)
+
+
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
+@api_view(['POST'])
+def checked_shipment_info(request):
+    data = request.data
+    checked_shipment_info_kwargs = {}
+    int_fields = ['approved', 'rejected', "replace_reject"]
+    try:
+        for key, value in data.items():
+            if value == "" or value is None:
+                value = None
+            else:
+                if key in int_fields:
+                    value = int(value)
+
+            checked_shipment_info_kwargs[key] = value
+
+
+        updated = cafe_manager.supplier.inspect_received_order(**checked_shipment_info_kwargs)
+        if updated:
+            return Response({'success': True})
+        else:
+            return Response({'success': False, 'error': 'Could not check shipment info'}, status=500)
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
 
