@@ -199,8 +199,16 @@ class CafeManager:
         return self.supplier.db.edit_supplier(editing)
 
     #todo time missing from order Important
-    def get_serialization_ordes_in_detail(self):
-        details = self.supplier.db.get_orderdetail()
+    def get_serialization_ordes_in_detail(self, open_clos:str = None):
+        if open_clos and open_clos.lower().strip() == 'open':
+            open_clos = "open"
+        elif open_clos and open_clos.lower().strip() == 'clos':
+            open_clos = "clos"
+        else:
+            open_clos = None
+
+
+        details = self.supplier.db.get_orderdetail(open_clos=open_clos)
         if details:
             serialization = [
 
@@ -208,7 +216,7 @@ class CafeManager:
             orders = {}
             for each_detail in details:
                 inventory_detail = {
-                    'inventory_id': each_detail.inventory_item.id,
+                                    'inventory_id': each_detail.inventory_item.id,
                                   'inventory_name': each_detail.inventory_item.name,
                                   'unit': each_detail.inventory_item.unit,
                                   'box_amount': each_detail.box_amount,
@@ -232,7 +240,8 @@ class CafeManager:
                                       'received_date': each_detail.ship.received_date,
                                       'description': each_detail.ship.description,
                                   },
-                                  },
+                                  }
+
                 only_orders_detail = {
                     'order': {'order_id': each_detail.order_id,
                               'date': each_detail.order.date,
@@ -249,12 +258,27 @@ class CafeManager:
                     orders[each_detail.order_id]['order']['inventory_detail'].append(inventory_detail)
                 else:
                     orders[each_detail.order_id] = only_orders_detail
-                    orders[each_detail.order_id]['order']['inventory_detail'] = inventory_detail
+                    orders[each_detail.order_id]['order']['inventory_detail'] = [inventory_detail]
 
             serialization.append(orders)
             return serialization
         else:
             return None
+
+    def add_new_order_info(self, **kwargs):
+        if not self.supplier.add_item_to_order(**kwargs):
+            return None
+
+        #inventory change current price
+        current_price = kwargs['box_price'] / kwargs['box_amount']
+        if not self.inventory.set_current_price(kwargs['inventory_id'], current_price):
+            return None
+        #direct cost of menu get changed
+        if not self.menu_pricing.calculate_update_direct_cost():
+            pass
+        return True
+
+
 
     def update_shipper_info(self, **kwargs):
         the_id = kwargs['id']
@@ -287,6 +311,33 @@ class CafeManager:
             the_order_detail.ship_id = the_ship_info.id
             return the_ship_info
 
-
+    #todo approved manfi bashe chi
     def checked_received_items(self, **kwargs):
-        self.supplier.inspect_received_order(**kwargs)
+        order_detail = self.supplier.inspect_received_order(**kwargs)
+        date = datetime.now()
+
+        if 'approved' in kwargs:
+            quantity = kwargs['approved'] * order_detail.box_amount
+
+            if kwargs['approved'] > 0:
+                if not self.inventory.restock_by_inventory_item(
+                    inventory_item_id=order_detail.inventory_id,
+                     quantity=quantity,
+                    category="Supplied",
+                    date=date,
+                    description=f"Mr {order_detail.approver} approved {kwargs['approved']} boxes to be usable",
+                    foreign_id = order_detail.id,
+                ):
+                    return None
+            elif kwargs['approved'] < 0:
+                if not self.inventory.deduct_stock_by_inventory_item(
+                    inventory_item_id=order_detail.inventory_id,
+                    quantity=quantity,
+                    category="deduct",
+                    date=date,
+                    description=f"Mr {order_detail.approver} removed approved {kwargs['approved']} boxes from usable",
+                    foreign_id=order_detail.id,
+                ):
+                    return None
+        return order_detail
+

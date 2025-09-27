@@ -15,7 +15,7 @@ class SupplierService:
         except:
             return None
         detail_stat = [item.status for item in the_order.order_details]
-        if len(detail_stat) == len(set(detail_stat)):
+        if len(set(detail_stat)) == 1:
             the_order.status = detail_stat[0]
             self.db.edit_order(the_order)
 
@@ -219,10 +219,10 @@ class SupplierService:
                                rejected: float,
                                approver: str,
                                replace_rejected: float = None,
-                               description: str = None) -> bool:
+                               description: str = None) -> Optional[OrderDetail]:
         order_detail_fetch = self.db.get_orderdetail(order_id=order_id, inventory_id=inventory_id)
         if not order_detail_fetch:
-            return False
+            return None
         the_order_detail = order_detail_fetch[0]
         approved_before = the_order_detail.numbers_of_box_approved or 0
         rejected_before = the_order_detail.numbers_of_box_rejected or 0
@@ -240,11 +240,12 @@ class SupplierService:
         the_order_detail.approver = approver
         if description:
             the_order_detail.description = description
-        if not self.db.edit_orderdetail(the_order_detail):
-            return False
+        updated = self.db.edit_orderdetail(the_order_detail)
+        if not updated:
+            return None
         self._check_status_detail(the_order_detail.order_id, the_order_detail.inventory_id)
         self._check_status_order(order_id)
-        return True
+        return updated
 #___shipment____
     def add_shipment(self,
                      shipper:str,

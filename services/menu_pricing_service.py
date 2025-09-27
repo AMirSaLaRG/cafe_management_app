@@ -204,21 +204,21 @@ class MenuPriceService:
         print("r5")
     #_____________________________direct cost changes updates______________________________________________
 
-    def calculate_update_direct_cost(self, menu_ids:list[int],
+    def calculate_update_direct_cost(self, menu_ids:list[int]=None,
                                      category:Optional[str]=None,
                                      description:Optional[str]=None)->bool:
-        if not menu_ids:
-            return False
 
-        menu_ids = list(set(menu_ids))
+
+        if menu_ids:
+            menu_ids = list(set(menu_ids))
 
         menu_get_list = self.db.get_menu(id=menu_ids)
         if not menu_get_list:
             return False
-
         for menu_item in menu_get_list:
             recipe_list = menu_item.recipe
             new_price = 0
+
             for recipe in recipe_list:
                 usage = recipe.inventory_item_amount_usage
                 price_unit = recipe.inventory_item.price_per_unit if recipe.inventory_item.price_per_unit else 0

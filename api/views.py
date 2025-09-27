@@ -307,13 +307,18 @@ def editing_the_supplier(request):
 @api_view(['GET'])
 def get_order_details(request):
     try:
-        order_details = cafe_manager.get_serialization_ordes_in_detail()
+        require_status=None
+        params = request.query_params
+        if 'status' in params:
+            require_status = params["status"] if params["status"] else None
+        order_details = cafe_manager.get_serialization_ordes_in_detail(open_clos=require_status)
         if order_details:
             return Response({'success': True, 'orders': order_details})
         else:
             return Response({'success': False, 'error': 'Could not get orders'}, status=500)
     except Exception as e:
         return Response({'success': False, 'error': str(e)}, status=500)
+
 
 @api_view(['POST'])
 def add_order_detailed(request):
@@ -332,8 +337,7 @@ def add_order_detailed(request):
                     value = float(value)
 
             add_order_detail_kwargs[key] = value
-
-        approved = cafe_manager.supplier.add_item_to_order(**add_order_detail_kwargs)
+        approved = cafe_manager.add_new_order_info(**add_order_detail_kwargs)
         if approved:
             return Response({'success': True})
         else:
@@ -384,7 +388,7 @@ def checked_shipment_info(request):
             checked_shipment_info_kwargs[key] = value
 
 
-        updated = cafe_manager.supplier.inspect_received_order(**checked_shipment_info_kwargs)
+        updated = cafe_manager.checked_received_items(**checked_shipment_info_kwargs)
         if updated:
             return Response({'success': True})
         else:

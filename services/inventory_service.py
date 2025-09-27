@@ -162,7 +162,8 @@ class InventoryService:
             self._calculate_inventory(inventory_item_id=inventory_id)
         return True
 
-    def deduct_stock_by_inventory_item(self, inventory_item_id:int,
+    def deduct_stock_by_inventory_item(self,
+                                       inventory_item_id:int,
                                        quantity: float,
                                        category: str = None,
                                        date: datetime = None,
@@ -217,7 +218,8 @@ class InventoryService:
             self._calculate_inventory(inventory_item_id=inventory_id)
         return True
 
-    def restock_by_inventory_item(self, inventory_item_id:int,
+    def restock_by_inventory_item(self,
+                                      inventory_item_id:int,
                                        quantity: float,
                                        category: str = None,
                                        date: datetime = None,

@@ -1587,7 +1587,8 @@ class DBHandler:
             approver:Optional[str]=None,
             status:Optional[str]=None,
             has_reject: bool=False,
-            row_num: Optional[int] = None
+            row_num: Optional[int] = None,
+            open_clos: Optional[str]=None,
 
     ) -> list[OrderDetail]:
         """Get orderdetail with optional filters
@@ -1646,6 +1647,11 @@ class DBHandler:
 
                     if has_reject:
                         query = query.filter(OrderDetail.numbers_of_box_rejected.isnot(None))
+                    if open_clos is not None:
+                        if open_clos == "clos":
+                            query = query.filter(OrderDetail.status.is_("completed"))
+                        if open_clos == "open":
+                            query = query.filter(OrderDetail.status.is_not("completed"))
 
                     if row_num:
                         query = query.limit(row_num)
