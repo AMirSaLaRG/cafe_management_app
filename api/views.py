@@ -396,3 +396,18 @@ def checked_shipment_info(request):
     except Exception as e:
         return Response({'success': False, 'error': str(e)}, status=500)
 
+
+#______________hr_______________________
+
+@api_view(['GET'])
+def get_personal_info(request):
+    try:
+        f = None
+        params = request.query_params
+        if params == "all":
+            f = "all"
+
+        cafe_manager.serialization_personal(f = f,)
+
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)

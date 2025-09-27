@@ -340,4 +340,83 @@ class CafeManager:
                 ):
                     return None
         return order_detail
+    #todo check if this later may cause overload for front end
+    def serialization_personal(self, f=None):
+        serialization = []
+        if f == "all":
+            active= False
+        else:
+            active = True
+        personal = self.hr.db.get_personal(active=active,
+                                           with_shift_records=True,
+                                           with_payments_records=True,
+                                           with_assignments_records=True,)
+        for person in personal:
+            person_info = {
+                'personal_id': person.id,
+                'first_name': person.first_name,
+                'national_code': person.national_code,
+                'phone_number': person.phone,
+                'email': person.email,
+                'address': person.address,
+                'hire_date': person.hire_date,
+                'position': person.position,
+                'monthly_hr': person.monthly_hr,
+                'monthly_payment': person.monthly_payment,
+                "active": person.active,
+                "description": person.description,
+            }
+            persons_work_record = person.shift_record
+            work_record_info = [
+                {
+                    "record_id": record.id,
+                    "from_date": record.from_date,
+                    "to_date": record.to_date,
+                    "lunch": record.lunch,
+                    "service": record.service,
+                    "extra_payment": record.extra_payment,
+                    'description': record.description,
 
+                }
+                for
+                record
+                in
+                persons_work_record
+            ]
+
+            person_info['work_records'] = work_record_info
+
+            person_payments_record = person.payments
+            payments_info = [{
+                'record_id': record.id,
+                'from_date': record.from_date,
+                "to_date": record.to_date,
+                'monthly_salary': record.monthly_salary,
+                'payment': record.payment,
+                'indirect_payment': record.indirect_payment,
+                'insurance': record.insurance,
+                'work_hr': record.work_hr,
+                'extra_hr': record.extra_hr,
+                'extra_expenses': record.extra_expenses,
+                'description': record.description,
+            }
+                             for record in
+                             person_payments_record]
+
+            person_info['payments'] = payments_info
+
+            person_asignments = person.asignments
+            asignments_info = [
+                {
+                    'date': record.shift.date,
+                    'from_hr': record.shift.from_hr,
+                    'to_hr': record.shift.to_hr,
+                }
+                for record in
+                person_asignments
+            ]
+            person_info['asignments'] = asignments_info
+
+            serialization.append(person_info)
+
+        return serialization

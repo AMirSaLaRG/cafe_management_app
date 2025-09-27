@@ -350,6 +350,8 @@ class InventoryService:
         if new_item is None:
             return False
         # if there is a current_stock we should add restock_by_inventory_item request
+        self.set_current_price(new_item.id, price_per_unit)
+
         if self.manual_report(inventory_id=new_item.id,
                               amount=current_stock if current_stock else 0,
                               reporter=person_who_added,
@@ -377,12 +379,14 @@ class InventoryService:
                     setattr(the_item, key, value)
         updated = self.db.edit_inventory(the_item)
 
-        if kwargs['current_stock']:
+        if 'current_stock' in kwargs:
             the_record = self.manual_report(inventory_id=the_item.id,
                               amount=kwargs['current_stock'] if kwargs['current_stock'] else 0,
                               reporter=user_name,
                               reason=kwargs['stock_change_reason'] if kwargs['stock_change_reason'] else "Changed by Update", )
-
+        if "price" in kwargs:
+            self.set_current_price(updated.id, kwargs['price'])
+        print(the_item, the_record, updated)
         if not the_item or the_record is False or not updated:
             return False
 

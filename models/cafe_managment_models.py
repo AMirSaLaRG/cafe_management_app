@@ -443,7 +443,7 @@ class Bills(Base):
 
 #_____________personal worked shifts and payment record_______________________
 
-
+#todo a sumurize of payed and worked and worked over time will be nice inside personal
 class Personal(Base):
     __tablename__ = "personal"
 
@@ -479,9 +479,9 @@ class PersonalAssignment(Base):
 
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-    personal = relationship("Personal", back_populates="assignments")
+    personal = relationship("Personal", back_populates="assignments", lazy='joined')
     position = relationship("TargetPositionAndSalary")
-    shift = relationship("Shift", back_populates="assignments")
+    shift = relationship("Shift", back_populates="assignments", lazy='joined')
 
 class WorkShiftRecord(Base):
     __tablename__ = "working_shift_record"

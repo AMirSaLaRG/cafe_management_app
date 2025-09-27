@@ -4355,6 +4355,10 @@ class DBHandler:
             to_date: Optional[datetime] = None,
             active: Optional[bool] = None,
             row_num: Optional[int] = None,
+            with_payments_records: bool = False,
+            with_shift_records: bool = False,
+            with_assignments_records: bool = False,
+
     ) -> list[Personal]:
         """Get with optional filters
         Returns:
@@ -4404,6 +4408,15 @@ class DBHandler:
 
                     if to_date:
                         query = query.filter(Personal.hire_date <= to_date)
+
+                    if with_payments_records:
+                        query = query.options(joinedload(Personal.payments))
+
+                    if with_shift_records:
+                        query = query.options(joinedload(Personal.shift_record))
+
+                    if with_assignments_records:
+                        query = query.options(joinedload(Personal.assignments))
 
                     if row_num:
                         query = query.limit(row_num)
