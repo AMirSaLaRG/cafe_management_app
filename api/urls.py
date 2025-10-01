@@ -18,6 +18,9 @@ urlpatterns = [
     path('order/add', views.add_order_detailed, name='add-order-detailed'),
     path('order/shipped', views.update_shipment_info, name='update-order-shipment'),
     path('order/approve', views.checked_shipment_info, name='approve-received-shipment'),
-
+    path('hr/personal', views.get_personal_info, name='get-personal-info'),
+    path('hr/personal/new', views.add_personal_info, name='add-personal-info'),
+    path('hr/personal/update', views.edit_personal_info, name='edit-personal-info'),
+    path('hr/shift', views.get_shift_planning, name='get-shift-info'),
 ]
 

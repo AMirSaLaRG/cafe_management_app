@@ -49,13 +49,13 @@ class HRService:
                      position: str,
                      monthly_hr: float,
                      monthly_payment: float,
-                     start_date: Optional[datetime] = None) -> bool:
+                     start_date: Optional[datetime] = None) -> Personal:
         added = self.db.add_personal(first_name=f_name, last_name=l_name,
                                      nationality_code=n_code, email=email,
                                      phone=phone, address=address,
                                      position=position, monthly_hr=monthly_hr,
                                      monthly_payment=monthly_payment, hire_date=start_date, active=True)
-        return True if added else False
+        return added
 
     def update_personal(self,
                         personal_id: int,
@@ -69,7 +69,9 @@ class HRService:
                         monthly_hr: Optional[float] = None,
                         monthly_payment: Optional[float] = None,
                         start_date: Optional[datetime] = None) -> bool:
+
         emp_fetch = self.db.get_personal(id=personal_id)
+
         if emp_fetch:
             emp = emp_fetch[0]
         else:

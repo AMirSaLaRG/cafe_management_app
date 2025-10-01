@@ -355,7 +355,7 @@ class CafeManager:
             person_info = {
                 'personal_id': person.id,
                 'first_name': person.first_name,
-                'national_code': person.national_code,
+                'nationality_code': person.nationality_code,
                 'phone_number': person.phone,
                 'email': person.email,
                 'address': person.address,
@@ -405,18 +405,98 @@ class CafeManager:
 
             person_info['payments'] = payments_info
 
-            person_asignments = person.asignments
-            asignments_info = [
+            person_assignments = person.assignments
+            assignments_info = [
                 {
                     'date': record.shift.date,
                     'from_hr': record.shift.from_hr,
                     'to_hr': record.shift.to_hr,
                 }
                 for record in
-                person_asignments
+                person_assignments
             ]
-            person_info['asignments'] = asignments_info
+            person_info['asignments'] = assignments_info
 
             serialization.append(person_info)
+        return serialization
+
+    def add_new_personal(self, **kwargs):
+        valid_params = [
+            'f_name', 'l_name', 'n_code', 'email', 'phone',
+            'address', 'position', 'monthly_hr', 'monthly_payment', 'start_date'
+        ]
+        new_personal_kwargs = {k: v for k, v in kwargs.items() if k in valid_params}
+        return self.hr.new_personal(**new_personal_kwargs)
+
+    def edit_info_personal(self, **kwargs):
+        update = True
+        update_deactive = True
+        valid_params = [
+            "personal_id", 'f_name', 'l_name', 'n_code', 'email', 'phone',
+            'address', 'position', 'monthly_hr', 'monthly_payment', 'start_date'
+        ]
+        new_personal_kwargs = {k: v for k, v in kwargs.items() if k in valid_params}
+        update = self.hr.update_personal(**new_personal_kwargs)
+
+        if 'deactive' in kwargs and kwargs['deactive']:
+            update_deactive = self.hr.deactivate_personal(kwargs['personal_id'])
+
+        if update and update_deactive:
+            return True
+        return False
+
+
+
+    def serialization_shifts_plan(self):
+        serialization = []
+
+        shifts = self.hr.db.get_shift()
+
+        for shift in shifts:
+            shift_ifo = {
+                'shift_date': shift.date,
+                'shift_id': shift.id,
+                'from_hr': shift.from_hr,
+                'to_hr': shift.to_hr,
+                'name': shift.name,
+                'description': shift.description,
+                'lunch': shift.lunch,
+                'service': shift.service,
+                'extra_payment': shift.extra_payment,
+            }
+
+            list_labor_info = shift.labor
+
+            shift_estimation = [ {
+                'position': labor.position.position,
+                'number': labor.number,
+                'extra_hr': labor.extra_hr,
+                'from_to_date': f"{labor.position.from_date} to {labor.position.to_date}",
+                'monthly_payment': labor.position.monthly_payment,
+                "monthly_hr": labor.position.monthly_hr,
+                'over_time_payment_hr': labor.position.extra_hr_payment,
+                'category': labor.position.category,
+            }
+                                for labor in
+                                list_labor_info]
+
+            shift_ifo['labor_estimation'] = shift_estimation
+
+
+            assignment_list = shift.assignments
+
+            assignment_info = [
+                {
+                    'name': assignment.personal.name,
+                    'last_name': assignment.personal.last_name,
+                    'position': assignment.position.position,
+
+                }
+                for assignment in assignment_list
+            ]
+
+            shift_ifo['assignment'] = assignment_info
+
+            serialization.append(shift_ifo)
 
         return serialization

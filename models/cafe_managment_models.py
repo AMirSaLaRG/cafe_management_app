@@ -352,6 +352,7 @@ class TargetPositionAndSalary(Base):
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     labor = relationship("EstimatedLabor", back_populates="position")
+    assignment = relationship('PersonalAssignment', back_populates='position')
 
 
 #todo model has problem it should be from date to date not date
@@ -480,7 +481,7 @@ class PersonalAssignment(Base):
     time_create = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     personal = relationship("Personal", back_populates="assignments", lazy='joined')
-    position = relationship("TargetPositionAndSalary")
+    position = relationship("TargetPositionAndSalary", back_populates='assignment', lazy='joined')
     shift = relationship("Shift", back_populates="assignments", lazy='joined')
 
 class WorkShiftRecord(Base):

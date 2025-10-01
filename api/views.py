@@ -1,3 +1,4 @@
+from csv import excel
 from http.client import responses
 from typing import Optional
 
@@ -404,10 +405,100 @@ def get_personal_info(request):
     try:
         f = None
         params = request.query_params
-        if params == "all":
+        if 'active' in params and params['active'] == "all":
             f = "all"
 
-        cafe_manager.serialization_personal(f = f,)
+        data = cafe_manager.serialization_personal(f = f)
+        if data:
+            return Response({'success': True, 'personal': data}, status=200)
+
+        else:
+            return Response({'success': False, 'error': 'Could not get personal info'}, status=500)
+
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
+@api_view(['POST'])
+def add_personal_info(request):
+    data = request.data
+    personal_info_kwargs = {}
+    required_fields = {
+        'f_name', 'l_name', 'n_code', 'email', 'phone',
+        'address', 'position', 'monthly_hr', 'monthly_payment'
+    }
+    float_fields = {
+        'monthly_hr', 'monthly_payment'
+    }
+    for key, value in data.items():
+        if value == "" or value is None:
+            value = None
+        else:
+            if key in float_fields:
+                value = float(value)
+
+        personal_info_kwargs[key] = value
+
+    try:
+        missing_fields = required_fields - set(personal_info_kwargs.keys())
+        if missing_fields:
+            return Response({'success': False, 'error': 'need more info for add new personal'}, status=400)
+
+        new_personal = cafe_manager.add_new_personal(**personal_info_kwargs)
+        if new_personal:
+            return Response({'success': True})
+        else:
+            return Response({'success': False, 'error': 'Could not add new personal'}, status=500)
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
+@api_view(['POST'])
+def edit_personal_info(request):
+    data = request.data
+    personal_info_kwargs = {}
+    required_fields = {
+        'personal_id'
+    }
+    float_fields = {
+        'monthly_hr', 'monthly_payment'
+    }
+
+    for key, value in data.items():
+        if value == "" or value is None:
+            value = None
+        else:
+            if key in float_fields:
+                value = float(value)
+
+        personal_info_kwargs[key] = value
+
+    try:
+        missing_fields = required_fields - set(personal_info_kwargs.keys())
+        if missing_fields:
+            return Response({'success': False, 'error': 'need personal id'}, status=400)
+
+        update = cafe_manager.edit_info_personal(**personal_info_kwargs)
+        if update:
+            return Response({'success': True})
+        else:
+            return Response({'success': False, 'error': 'Could not update personal info'}, status=500)
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
+
+
+
+
+
+
+
+@api_view(['GET'])
+def get_shift_planning(request):
+    try:
+        data = cafe_manager.serialization_shifts_plan()
+        if data:
+            return Response(data['success': True, 'personal': data], status=200)
+        else:
+            return Response({'success': False, 'error': 'Could not get shift planning info'}, status=500)
 
     except Exception as e:
         return Response({'success': False, 'error': str(e)}, status=500)
