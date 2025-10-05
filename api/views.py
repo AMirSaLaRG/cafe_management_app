@@ -1,7 +1,7 @@
 from csv import excel
 from http.client import responses
 from typing import Optional
-
+from datetime import time
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
@@ -15,6 +15,58 @@ from models.cafe_managment_models import *
 db_handler = DBHandler()
 cafe_manager = CafeManager(db_handler)
 # Create your views here.
+
+def parse_date_string(date_str: str):
+    """Convert string to datetime object"""
+    if isinstance(date_str, datetime):
+        return date_str
+
+    if date_str is None:
+        return None
+
+    try:
+        # Handle various date formats
+        formats = ['%Y/%m/%d', '%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y', '%Y%m%d']
+
+        for fmt in formats:
+            try:
+                return datetime.strptime(date_str, fmt)
+            except ValueError:
+                continue
+
+        raise ValueError(f"Unsupported date format: {date_str}")
+    except (ValueError, TypeError) as e:
+        raise ValueError(f"Invalid date format: {date_str}") from e
+
+
+def parse_time_string(time_str: str):
+    """Convert string to time object"""
+    if isinstance(time_str, time):
+        return time_str
+
+    if time_str is None:
+        return None
+
+    try:
+        # Handle various time formats
+        if ':' in time_str:
+            # Format: "HH:MM" or "HH:MM:SS"
+            parts = time_str.split(':')
+            if len(parts) == 2:
+                return time(int(parts[0]), int(parts[1]))
+            elif len(parts) == 3:
+                return time(int(parts[0]), int(parts[1]), int(parts[2]))
+        else:
+            # Format: "8" (just hours) or "800" (HHMM)
+            if len(time_str) <= 2:
+                return time(int(time_str), 0)
+            else:
+                # Handle "800" as 8:00, "1630" as 16:30
+                hours = int(time_str[:-2]) if len(time_str) > 2 else int(time_str)
+                minutes = int(time_str[-2:]) if len(time_str) > 2 else 0
+                return time(hours, minutes)
+    except (ValueError, TypeError) as e:
+        raise ValueError(f"Invalid time format: {time_str}") from e
 
 
 
@@ -499,6 +551,79 @@ def get_shift_planning(request):
             return Response(data['success': True, 'personal': data], status=200)
         else:
             return Response({'success': False, 'error': 'Could not get shift planning info'}, status=500)
+
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
+
+@api_view(['POST'])
+def create_one_shift(request):
+    data = request.data
+    kwargs_the_shift = {}
+    float_fields = {"lunch_payment", "service_payment", "extra_payment"}
+    datetime_fields = {'date'}
+    time_fields = {'from_hr', "to_hr"}
+    try:
+        for key, value in data.items():
+            if value == "" or value is None:
+                value = None
+
+            else:
+                if key in float_fields:
+                    value = float(value)
+
+                if key in datetime_fields:
+                    value = parse_date_string(value)
+
+                if key in time_fields:
+                    value = parse_time_string(value)
+
+            kwargs_the_shift[key] = value
+        added = cafe_manager.create_the_shift(**kwargs_the_shift)
+        if added:
+            return Response({'success': True})
+        else:
+            return Response({'success': False, 'error': 'Could not add new shift'}, status=500)
+
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
+
+@api_view(['POST'])
+def create_routine_shift(request):
+    data = request.data
+    kwargs_the_shift = {}
+    float_fields = {"lunch_payment", "service_payment", "extra_payment"}
+    int_fields = {'continue_days'}
+    datetime_fields = {'from_date'}
+    time_fields = {'from_hr_1', "to_hr_1",
+                   'from_hr_2', "to_hr_2",
+                   'from_hr_3', "to_hr_3",
+                   'from_hr_4', "to_hr_4",
+                   'from_hr_5', "to_hr_5",
+                   'from_hr_6', "to_hr_6",}
+    try:
+        for key, value in data.items():
+            if value == "" or value is None:
+                value = None
+
+            else:
+                if key in float_fields:
+                    value = float(value)
+                if key in int_fields:
+                    value = int(value)
+                if key in datetime_fields:
+                    value = parse_date_string(value)
+
+                if key in time_fields:
+                    value = parse_time_string(value)
+
+            kwargs_the_shift[key] = value
+        added = cafe_manager.create_routine_shifts(**kwargs_the_shift)
+        if added:
+            return Response({'success': True})
+        else:
+            return Response({'success': False, 'error': 'Could not add new shifts'}, status=500)
 
     except Exception as e:
         return Response({'success': False, 'error': str(e)}, status=500)

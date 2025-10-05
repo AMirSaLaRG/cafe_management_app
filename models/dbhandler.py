@@ -3529,7 +3529,7 @@ class DBHandler:
     #--Shift--
 
     def add_shift(self,
-                            date: datetime,
+                          date: datetime,
                           from_hr: time,
                           to_hr: time,
                           name: Optional[str] = None,
@@ -3594,6 +3594,74 @@ class DBHandler:
                 session.rollback()
                 logging.error(f"Failed to add Shift to the database: {e}")
                 return None
+
+    def add_routine_shift(self,
+                          routine_list: list[tuple[datetime, time, time]],
+                          name: Optional[str] = None,
+                          lunch_payment: Optional[float] = None,
+                          service_payment: Optional[float] = None,
+                          extra_payment: Optional[float] = None,
+                          description: Optional[str] = None,
+                    ) -> list[Shift]:
+
+        """ adding new record to db  """
+
+        if lunch_payment is not None and lunch_payment < 0:
+            logging.error("Total amount can not be negative")
+            return []
+
+        if service_payment is not None and service_payment < 0:
+            logging.error("Total amount can not be negative")
+            return []
+
+        if extra_payment is not None and extra_payment < 0:
+            logging.error("Total amount can not be negative")
+            return []
+
+        if name is not None:
+            name = name.lower().strip()
+        successful_shifts = []
+        with self.Session() as session:
+            try:
+                for date, from_hr, to_hr in routine_list:
+
+
+                # existing_overlap = session.query(Shift).filter(
+                #     Shift.date == date,
+                #     Shift.from_hr < to_hr,  # CORRECT - Proper overlap detection
+                #     Shift.to_hr > from_hr  # CORRECT - Check if existing shift ends after new shift starts
+                # ).first()
+                #
+                # if existing_overlap:
+                #     logging.error(f"Time overlap with existing shift ID: {existing_overlap.id}) "
+                #                   f"from {existing_overlap.from_hr} to {existing_overlap.to_hr}")
+                #     return None
+
+
+                    new_one = Shift(
+                        date=date,
+                        from_hr=from_hr,
+                        to_hr=to_hr,
+                        name=name,
+                        lunch_payment=lunch_payment,
+                        service_payment=service_payment,
+                        extra_payment=extra_payment,
+                        description=description,
+                    )
+                    session.add(new_one)
+                    successful_shifts.append(new_one)
+                session.commit()
+                for shift in successful_shifts:
+                    session.refresh(shift)
+                logging.info("added successfully")
+                return successful_shifts
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to add Shift to the database: {e}")
+                return []
+
+
+
     #problem datetime time hr
     def get_shift(
             self,

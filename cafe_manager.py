@@ -500,3 +500,24 @@ class CafeManager:
             serialization.append(shift_ifo)
 
         return serialization
+
+    def create_the_shift(self, **kwargs):
+        return self.hr.create_shift(**kwargs)
+
+    def create_routine_shifts(self, **kwargs):
+        list_hrs = []
+        keys_to_remove = []
+        for i in range(7):
+            from_hr = f'from_hr_{i}'
+            to_hr = f'to_hr_{i}'
+            if from_hr in kwargs and to_hr in kwargs:
+                keys_to_remove.append(from_hr)
+                keys_to_remove.append(to_hr)
+                if kwargs[from_hr] and kwargs[to_hr]:
+                    list_hrs.append((kwargs[from_hr], kwargs[to_hr]))
+
+
+        for key in keys_to_remove:
+            kwargs.pop(key, None)
+
+        return self.hr.create_shift_routine(list_hrs, **kwargs)

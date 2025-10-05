@@ -234,15 +234,52 @@ class HRService:
 
     # __________Shift assignment & schedule retrieval____
 
-    def create_shift(self, date: datetime, from_hr: time, to_hr: time, name: str,
-                     lunch_payment: float = 0, service_payment: float = 0,
-                     extra_payment: float = 0, description: str = "") -> Optional[Shift]:
+    def create_shift(self, date: datetime, from_hr: time, to_hr: time, name: str=None,
+                     lunch_payment: float = None, service_payment: float = None,
+                     extra_payment: float = None, description: str = "") -> Optional[Shift]:
         """Create a new shift"""
+        if lunch_payment is None:
+            lunch_payment = 0
+        if service_payment is None:
+            service_payment = 0
+        if extra_payment is None:
+            extra_payment = 0
         return self.db.add_shift(
             date=date, from_hr=from_hr, to_hr=to_hr, name=name,
             lunch_payment=lunch_payment, service_payment=service_payment,
             extra_payment=extra_payment, description=description
         )
+    def create_shift_routine(self,
+                             list_tuple_start_end_daily: list[tuple[time, time]],
+                             continue_days:int,
+                             from_date:datetime=None,
+                             name=None,
+                             lunch_payment=None,
+                             service_payment=None,
+                             extra_payment=None,
+                             description=None):
+        date_range = []
+        main_list = []
+        if from_date is None:
+            from_date = datetime.now()
+        target_date = from_date + timedelta(days=continue_days)
+
+        while from_date <= target_date:
+            date_range.append(from_date)
+            from_date += timedelta(days=1)
+
+        for date in date_range:
+            for tuple_start_end_daily in list_tuple_start_end_daily:
+                main_tuple = (date, tuple_start_end_daily[0], tuple_start_end_daily[1])
+                main_list.append(main_tuple)
+
+        self.db.add_routine_shift(main_list,
+                                  name=name,
+                                  lunch_payment=lunch_payment,
+                                  service_payment=service_payment,
+                                  extra_payment=extra_payment,
+                                  description=description)
+
 
     def get_shift_schedule(self, personal_id: int,
                            from_date: datetime,
