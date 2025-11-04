@@ -656,4 +656,39 @@ class CafeManager:
         return list_data
 
 
+    def add_edit_equipment(self, **kwargs):
+        the_id = kwargs.get("id", None)
+        if the_id:
+            kwargs.pop('id')
+            update = self.equipment.update_equipment(the_id, **kwargs)
+        else:
+            update = self.equipment.new_equipment_record(**kwargs)
+
+        a=self.menu_pricing.equipment_change_update_on_menu_price_record()
+        print(a)
+        return update
+    def get_the_equipments(self):
+        fetched_data = self.equipment.get_all_equipment()
+        list_data = {}
+
+        for data in fetched_data:
+            data_exist = list_data.get(data.category, None)
+            if not data_exist:
+                list_data[data.category] = []
+            new_data = {
+                "id": data.id,
+                'name': data.name,
+                'number': data.number ,
+                'purchase_date': data.purchase_date,
+                'expire_date': data.expire_date,
+                'purchase_price': data.purchase_price,
+                'monthly_depreciation': data.monthly_depreciation,
+                'in_use': data.in_use,
+                'description': data.description,
+            }
+            list_data[data.category].append(new_data)
+
+        return list_data
+
+
 

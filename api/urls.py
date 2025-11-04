@@ -32,6 +32,8 @@ urlpatterns = [
     path('bills_estimated/add_update', views.add_edit_estimated_bill, name='add-update=estimated-bill'),
     path('rent/', views.fetch_rent, name='get-rent'),
     path('rent/add_update', views.add_edit_rent, name='add-update=rent'),
+    path('equipment/', views.fetch_equipment, name='get-equipment'),
+    path('equipment/add_update', views.add_edit_equipment, name='add-equipment'),
 
 ]
 

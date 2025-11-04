@@ -762,13 +762,45 @@ def fetch_rent(request):
 
 
 #add edit get equipment update indirect cost
+@api_view(["POST"])
+def add_edit_equipment(request):
+    try:
+        the_kwargs = clear_kwargs(request.data,
+                                  float_fields={"purchase_price", "monthly_depreciation"},
+                                  datetime_fields={'purchase_date', "expire_date"},
+                                  int_fields={'id', "number"},
+                                  bool_fields={"in_use"})
+        added = cafe_manager.add_edit_equipment(**the_kwargs)
+        if added:
+            return Response({'success': True})
+        else:
+            return Response({'success': False, 'error': 'Could not add new rent'}, status=500)
+
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
+
+@api_view(["GET"])
+def fetch_equipment(request):
+    try:
+        data = cafe_manager.get_the_equipments()
+        if data:
+            return Response({'success': True, 'bills': data}, status=200)
+        else:
+            return Response({'success': False, 'error': 'Could not get rent info'}, status=500)
+
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
+
 #process sell deduct inventory creat invoic get invoice payments
 #process usage deduct inventory
 
 def clear_kwargs(data,
                  float_fields: Optional[set[str]] = None,
                  datetime_fields: Optional[set[str]] = None,
-                 int_fields: Optional[set[str]] = None):
+                 int_fields: Optional[set[str]] = None,
+                 bool_fields: Optional[set[str]] = None):
     kwargs_the_target = {}
     for key, value in data.items():
         if value == "" or value is None:
@@ -781,6 +813,15 @@ def clear_kwargs(data,
                 value = float(value)
             if datetime_fields is not None and key in datetime_fields:
                 value = parse_date_string(value)
+            if bool_fields is not None and key in bool_fields:
+                if value in {"1", "True", "true"}:
+                    value = True
+                elif value in {"0", "False", "false"}:
+                    value = False
+
+
+
+
 
         kwargs_the_target[key] = value
     return kwargs_the_target

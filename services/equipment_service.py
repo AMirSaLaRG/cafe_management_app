@@ -33,9 +33,13 @@ class EquipmentService:
             description=description
         )
 
-    def update_equipment(self, equipment: Equipment) -> Optional[Equipment]:
+    def update_equipment(self, id: int, **kwargs) -> Optional[Equipment]:
         """Update existing equipment information"""
-        return self.db.edit_equipment(equipment)
+        the_target = self.get_equipment_by_id(id)
+        for kwarg in kwargs:
+            if hasattr(the_target, kwarg):
+                setattr(the_target, kwarg, kwargs[kwarg])
+        return self.db.edit_equipment(the_target)
 
     def remove_equipment(self, equipment_id: int) -> bool:
         """Permanently delete equipment from the system"""
