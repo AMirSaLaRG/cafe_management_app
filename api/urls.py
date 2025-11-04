@@ -24,5 +24,7 @@ urlpatterns = [
     path('hr/shift', views.get_shift_planning, name='get-shift-info'),
     path('hr/shift/create', views.create_one_shift, name='create-shift-new'),
     path('hr/shift/create/routine', views.create_routine_shift, name='create-shifts-new'),
+    path('hr/target_salary', views.get_target_salary, name='get-target-salary'),
+    path('hr/target_salary/add', views.create_edit_target_salary, name='crete-target-salary'),
 ]
 

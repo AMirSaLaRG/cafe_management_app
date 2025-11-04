@@ -502,6 +502,8 @@ class CafeManager:
         return serialization
 
     def create_the_shift(self, **kwargs):
+        update = self.hr.create_shift(**kwargs)
+        self.menu_pricing.labor_change_update_on_menu_price_record()
         return self.hr.create_shift(**kwargs)
 
     def create_routine_shifts(self, **kwargs):
@@ -521,3 +523,46 @@ class CafeManager:
             kwargs.pop(key, None)
 
         return self.hr.create_shift_routine(list_hrs, **kwargs)
+
+
+    def add_edit_target_salary(self, **kwargs):
+        id = kwargs.get("id", None)
+        updated= None
+        if id:
+            fetched_data = self.hr.db.get_targetpositionandsalary(id=id)[0]
+            for key in kwargs:
+                if hasattr(fetched_data, key):
+                    setattr(fetched_data, key, kwargs[key])
+            updated = self.hr.db.edit_targetpositionandsalary(fetched_data)
+        else:
+            updated =  self.hr.add_target_position(**kwargs)
+        self.menu_pricing.labor_change_update_on_menu_price_record()
+        return updated
+    def get_target_salary(self):
+        fetched_data = self.hr.db.get_targetpositionandsalary()
+        list_data = {}
+
+
+
+        for data in fetched_data:
+            data_exist = list_data.get(data.position, None)
+            if not data_exist:
+                list_data[data.position] = []
+            new_data = {
+                'from_date': data.from_date,
+                'to_date': data.to_date if data.to_date else 'current',
+                'category': data.category,
+                'monthly_hr': data.monthly_hr,
+                'monthly_payment': data.monthly_payment,
+                'monthly_insurance': data.monthly_insurance,
+                'extar_hr_payment': data.extra_hr_payment,
+            }
+            list_data[data.position].append(new_data)
+
+        serialized_list = [{key: value} for key, value in list_data.items()]
+
+
+        return serialized_list
+
+
+

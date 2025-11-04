@@ -273,13 +273,14 @@ class HRService:
                 main_tuple = (date, tuple_start_end_daily[0], tuple_start_end_daily[1])
                 main_list.append(main_tuple)
 
-        self.db.add_routine_shift(main_list,
+        if self.db.add_routine_shift(main_list,
                                   name=name,
                                   lunch_payment=lunch_payment,
                                   service_payment=service_payment,
                                   extra_payment=extra_payment,
-                                  description=description)
-
+                                  description=description):
+            return True
+        return None
 
     def get_shift_schedule(self, personal_id: int,
                            from_date: datetime,
@@ -347,35 +348,35 @@ class HRService:
         return True
 
     def add_target_position(self,
-                            name:str,
+                            position:str,
                             category:str,
                             monthly_hr:float,
                             monthly_payment:float,
-                            over_time_payment_hr:float,
+                            extra_hr_payment:float,
                             monthly_insurance:float,
-                            start_date:datetime = None,
-                            end_date:datetime = None) -> bool:
+                            from_date:datetime = None,
+                            to_date:datetime = None) -> bool:
         """Add a target position"""
 
         year = datetime.now().year
 
-        if start_date is None:
-            if end_date:
-                year = end_date.year
-            start_date = datetime(year=year, month=1, day=1)
-            year = start_date.year
+        if from_date is None:
+            if to_date:
+                year = to_date.year
+            from_date = datetime(year=year, month=1, day=1)
+            year = from_date.year
 
-        if end_date is None:
-            end_date = datetime(year=year, month=12, day=31)
+        if to_date is None:
+            to_date = datetime(year=year, month=12, day=31)
 
-        return bool(self.db.add_targetpositionandsalary(position=name,
-                                            from_date=start_date,
-                                            to_date=end_date,
+        return bool(self.db.add_targetpositionandsalary(position=position,
+                                            from_date=from_date,
+                                            to_date=to_date,
                                             category=category,
                                             monthly_hr=monthly_hr,
                                             monthly_payment=monthly_payment,
                                             monthly_insurance=monthly_insurance,
-                                            extra_hr_payment=over_time_payment_hr))
+                                            extra_hr_payment=extra_hr_payment))
 
     def update_target_position(self,
                                position_id:int,

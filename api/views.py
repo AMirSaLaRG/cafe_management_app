@@ -627,3 +627,50 @@ def create_routine_shift(request):
 
     except Exception as e:
         return Response({'success': False, 'error': str(e)}, status=500)
+
+
+@api_view(['POST'])
+def create_edit_target_salary(request):
+    data = request.data
+    kwargs_the_target = {}
+    float_fields = {"monthly_hr", "monthly_payment", "monthly_insurance", "extra_hr_payment"}
+    datetime_fields = {'from_date', "to_date"}
+    int_fields = {'id'}
+
+
+    try:
+        for key, value in data.items():
+            if value == "" or value is None:
+                value = None
+
+            else:
+                if key in float_fields:
+                    value = float(value)
+                if key in datetime_fields:
+                    value = parse_date_string(value)
+
+            kwargs_the_target[key] = value
+        added = cafe_manager.add_edit_target_salary(**kwargs_the_target)
+        if added:
+            return Response({'success': True})
+        else:
+            return Response({'success': False, 'error': 'Could not add new target salary'}, status=500)
+
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
+
+@api_view(['GET'])
+def get_target_salary(request):
+    try:
+        data = cafe_manager.get_target_salary()
+        print(data)
+        if data:
+            return Response({'success': True, 'target_salary_info': data}, status=200)
+        else:
+            return Response({'success': False, 'error': 'Could not get shift planning info'}, status=500)
+
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
+
