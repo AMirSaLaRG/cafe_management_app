@@ -559,10 +559,37 @@ class CafeManager:
             }
             list_data[data.position].append(new_data)
 
-        serialized_list = [{key: value} for key, value in list_data.items()]
 
 
-        return serialized_list
+        return list_data
+
+    def add_edit_bill(self, **kwargs):
+        the_id = kwargs.get("id", None)
+        if the_id:
+            kwargs.pop('id')
+            return self.bills_rent.update_bill(the_id, **kwargs)
+        else:
+            return self.bills_rent.new_bill(**kwargs)
+
+    def get_bills(self):
+        fetched_data = self.bills_rent.find_bills()
+        list_data = {}
+
+        for data in fetched_data:
+            data_exist = list_data.get(data.name, None)
+            if not data_exist:
+                list_data[data.name] = []
+            new_data = {
+                'from_date': data.from_date,
+                'to_date': data.to_date if data.to_date else 'current',
+                'category': data.category,
+                'cost': data.cost,
+                'payer': data.payer,
+                'description': data.description,
+            }
+            list_data[data.name].append(new_data)
+
+        return list_data
 
 
 

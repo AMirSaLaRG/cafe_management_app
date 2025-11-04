@@ -664,13 +664,69 @@ def create_edit_target_salary(request):
 def get_target_salary(request):
     try:
         data = cafe_manager.get_target_salary()
-        print(data)
         if data:
             return Response({'success': True, 'target_salary_info': data}, status=200)
         else:
-            return Response({'success': False, 'error': 'Could not get shift planning info'}, status=500)
+            return Response({'success': False, 'error': 'Could not get target salary info'}, status=500)
 
     except Exception as e:
         return Response({'success': False, 'error': str(e)}, status=500)
 
 
+#add edit get bills
+@api_view(["POST"])
+def add_edit_bill(request):
+    try:
+        the_kwargs = clear_kwargs(request.data,
+                                  float_fields={"cost"},
+                                  datetime_fields={'from_date', "to_date"},
+                                  int_fields={'id'})
+        print(the_kwargs)
+        added = cafe_manager.add_edit_bill(**the_kwargs)
+        if added:
+            return Response({'success': True})
+        else:
+            return Response({'success': False, 'error': 'Could not add new bill'}, status=500)
+
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
+@api_view(["GET"])
+def get_bills(request):
+    try:
+        data = cafe_manager.get_bills()
+        print(data)
+        if data:
+            return Response({'success': True, 'bills': data}, status=200)
+        else:
+            return Response({'success': False, 'error': 'Could not get bills info'}, status=500)
+
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
+
+#add edit get estimated bills update indirect cost
+#add edit get rent update indirect cost
+#add edit get equipment update indirect cost
+#process sell deduct inventory creat invoic get invoice payments
+#process usage deduct inventory
+
+def clear_kwargs(data,
+                 float_fields: Optional[set[str]] = None,
+                 datetime_fields: Optional[set[str]] = None,
+                 int_fields: Optional[set[str]] = None):
+    kwargs_the_target = {}
+    for key, value in data.items():
+        if value == "" or value is None:
+            value = None
+
+        else:
+            if int_fields is not None and key in int_fields:
+                value = int(value)
+            if float_fields is not None and key in float_fields:
+                value = float(value)
+            if datetime_fields is not None and key in datetime_fields:
+                value = parse_date_string(value)
+
+        kwargs_the_target[key] = value
+    return kwargs_the_target
