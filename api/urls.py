@@ -28,5 +28,7 @@ urlpatterns = [
     path('hr/target_salary/add', views.create_edit_target_salary, name='crete-target-salary'),
     path('bills/', views.get_bills, name='get-the-bills'),
     path('bills/add_update', views.add_edit_bill, name='add-update-bill'),
+    path('bills_estimated/', views.get_estimated_bills, name='get-estimated-bills'),
+    path('bills_estimated/add_update', views.add_edit_estimated_bill, name='add-update=estimated-bill'),
 ]
 
