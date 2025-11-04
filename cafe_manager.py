@@ -623,5 +623,37 @@ class CafeManager:
 
         return list_data
 
+    def add_edit_rent(self, **kwargs):
+        the_id = kwargs.get("id", None)
+        if the_id:
+            kwargs.pop('id')
+            update = self.bills_rent.update_rent(the_id, **kwargs)
+        else:
+            update = self.bills_rent.new_rent(**kwargs)
+
+        a=self.menu_pricing.rent_change_update_on_menu_price_record()
+        print(a)
+        return update
+    def get_the_rent(self):
+        fetched_data = self.bills_rent.find_rents()
+        list_data = {}
+
+        for data in fetched_data:
+            data_exist = list_data.get(data.name, None)
+            if not data_exist:
+                list_data[data.name] = []
+            new_data = {
+                'from_date': data.from_date,
+                'to_date': data.to_date if data.to_date else 'current',
+                'rent': data.rent,
+                'mortgage': data.mortgage,
+                'mortgage_percentage_to_rent': data.mortgage_percentage_to_rent,
+                'payer': data.payer,
+                'description': data.description,
+            }
+            list_data[data.name].append(new_data)
+
+        return list_data
+
 
 

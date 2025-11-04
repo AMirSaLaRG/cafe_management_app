@@ -30,5 +30,8 @@ urlpatterns = [
     path('bills/add_update', views.add_edit_bill, name='add-update-bill'),
     path('bills_estimated/', views.get_estimated_bills, name='get-estimated-bills'),
     path('bills_estimated/add_update', views.add_edit_estimated_bill, name='add-update=estimated-bill'),
+    path('rent/', views.fetch_rent, name='get-rent'),
+    path('rent/add_update', views.add_edit_rent, name='add-update=rent'),
+
 ]
 

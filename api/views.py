@@ -729,7 +729,38 @@ def get_estimated_bills(request):
 
     except Exception as e:
         return Response({'success': False, 'error': str(e)}, status=500)
+
 #add edit get rent update indirect cost
+@api_view(["POST"])
+def add_edit_rent(request):
+    try:
+        the_kwargs = clear_kwargs(request.data,
+                                  float_fields={"rent", "mortgage", "mortgage_percentage_to_rent"},
+                                  datetime_fields={'from_date', "to_date"},
+                                  int_fields={'id'})
+        added = cafe_manager.add_edit_rent(**the_kwargs)
+        if added:
+            return Response({'success': True})
+        else:
+            return Response({'success': False, 'error': 'Could not add new rent'}, status=500)
+
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
+
+@api_view(["GET"])
+def fetch_rent(request):
+    try:
+        data = cafe_manager.get_the_rent()
+        if data:
+            return Response({'success': True, 'bills': data}, status=200)
+        else:
+            return Response({'success': False, 'error': 'Could not get rent info'}, status=500)
+
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
+
 #add edit get equipment update indirect cost
 #process sell deduct inventory creat invoic get invoice payments
 #process usage deduct inventory
