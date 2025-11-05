@@ -27,19 +27,19 @@ class SalesService:
     def process_sale(self,
                      menu_item:Menu,
                      quantity,
-                     discount,
+                     discount=0,
                      price=None,
                      invoice_id = None,
                      description=None,
-                     time=None,
+                     date=None,
                      saler=None):
 
-        if time is None:
-            time = datetime.now()
+        if date is None:
+            date = datetime.now()
 
         if invoice_id is None:
             order_invoice = self.db.add_invoice(saler=saler,
-                                date=time,
+                                date=date,
                                 closed=False,
                                 description=f'Order: {description}',)
             invoice_id = order_invoice.id
@@ -47,15 +47,16 @@ class SalesService:
             current_price = menu_item.current_price
             price = (current_price * quantity)
 
-        if self.db.add_sales(menu_id=menu_item.id,
+        the_sale = self.db.add_sales(menu_id=menu_item.id,
                           invoice_id=invoice_id,
                           number=quantity,
                           discount=discount,
-                          price=price,) is None:
+                          price=price,)
+        if the_sale is None:
             return False
 
         self._update_invoice_price(invoice_id)
-        return True
+        return the_sale
 
 
 
@@ -134,7 +135,7 @@ class SalesService:
 
 
     def add_payment(self,
-                    amount,
+                    paid,
                     payer,
                     method,
                     receiver,
@@ -147,18 +148,21 @@ class SalesService:
         success = True
         if date is None:
             date = datetime.now()
+
         the_payment = self.db.add_invoicepayment(invoice_id=invoice_id,
-                                   paid=amount,
+                                   paid=paid,
                                    tip=tip,
                                    payer=payer,
                                    method=method,
                                    receiver=receiver,
                                    receiver_id=receiver_id,
                                    date=date)
+
         if not the_payment:
             return False
 
         remain = self._calculate_invoice_remain(invoice_id)
+
 
         if remain < 0 and remain_as_tip:
             the_payment.tip = (the_payment.tip or 0) + abs(remain)
@@ -168,6 +172,10 @@ class SalesService:
         if remain == 0:
             the_invoice = self.db.get_invoice(id=invoice_id)[0]
             the_invoice.closed = True
+            self.db.edit_invoice(the_invoice)
+        else:
+            the_invoice = self.db.get_invoice(id=invoice_id)[0]
+            the_invoice.closed = False
             self.db.edit_invoice(the_invoice)
 
         return True

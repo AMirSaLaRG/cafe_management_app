@@ -1,6 +1,8 @@
 # cafe_manager.py
 from turtledemo.paint import switchupdown
 
+from django.core.serializers import serialize
+
 # Import all the service classes you have created
 from models.dbhandler import DBHandler
 from services.bills_rent_service import BillsRent
@@ -691,4 +693,75 @@ class CafeManager:
         return list_data
 
 
+
+    def add_new_sale(self, **kwargs):
+        menu_id = kwargs['menu_id']
+        kwargs.pop('menu_id')
+        menu_item = self.menu.get_menu_item(menu_id)
+        is_satisfied, missing_items, max_available = self.inventory.check_stock_for_menu(menu_item, kwargs['quantity'])
+
+        if is_satisfied:
+
+            the_sale = self.sales.process_sale(menu_item, **kwargs)
+            if not the_sale:
+                return False
+            self.inventory.deduct_stock_by_menu(menu_item,
+                                                kwargs['quantity'],
+                                                "sales",
+                                                foreign_id=the_sale.invoice_id,
+                                                date=kwargs['date'],)
+            return True
+        else:
+            return False
+
+    def add_new_invoice_pay(self, **kwargs):
+        return self.sales.add_payment(**kwargs)
+
+    def get_the_invoices_info(self):
+        list_data = self.sales.db.get_invoice()
+        serialized_data = []
+
+        for data in list_data:
+            total_payed_info = []
+            for payment in data.payments:
+                payment_new_data = {
+                    "payment_id": payment.id,
+                    "paid": payment.paid,
+                    "tip": payment.tip,
+                    "date": payment.date,
+                    "method": payment.method,
+                    "payer": payment.payer,
+                    "receiver": payment.receiver,
+                    "receiver_id": payment.receiver_id,
+                }
+                total_payed_info.append(payment_new_data)
+            total_payed = sum(p['paid'] for p in total_payed_info)
+            total_tipped = sum(p['tip'] for p in total_payed_info)
+
+
+            total_sales_info = []
+            for sale in data.sales:
+                sale_new_data = {
+                    "id": sale.id,
+                    "item_name": self.menu.get_menu_item(sale.menu_id).name,
+                    "number": sale.number,
+                    "price": sale.price,
+                    "discount": sale.discount,
+                }
+                total_sales_info.append(sale_new_data)
+            new_data = {
+                "id": data.id,
+                "saler": data.saler,
+                "data": data.date,
+                "closed": data.closed,
+                "total_price": data.total_price,
+                "total_payed": total_payed,
+                "total_tiped": total_tipped,
+                "pays_info": total_payed_info,
+                "sales_info": total_sales_info,
+                "description": data.description,
+            }
+            serialized_data.append(new_data)
+
+        return serialized_data
 

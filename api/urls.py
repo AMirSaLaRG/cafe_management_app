@@ -34,6 +34,10 @@ urlpatterns = [
     path('rent/add_update', views.add_edit_rent, name='add-update=rent'),
     path('equipment/', views.fetch_equipment, name='get-equipment'),
     path('equipment/add_update', views.add_edit_equipment, name='add-equipment'),
+    path('equipment/', views.fetch_equipment, name='get-equipment'),
+    path('sale/add', views.add_new_sale, name='add-sale'),
+    path('payment/add', views.add_invoice_payment, name='add-payment'),
+    path('invoices/', views.get_invoices_info, name='get-invoice-info'),
 
 ]
 

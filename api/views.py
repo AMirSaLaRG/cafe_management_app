@@ -723,7 +723,7 @@ def get_estimated_bills(request):
     try:
         data = cafe_manager.get_estimated_bills()
         if data:
-            return Response({'success': True, 'bills': data}, status=200)
+            return Response({'success': True, 'estimate_bills': data}, status=200)
         else:
             return Response({'success': False, 'error': 'Could not get bills info'}, status=500)
 
@@ -753,7 +753,7 @@ def fetch_rent(request):
     try:
         data = cafe_manager.get_the_rent()
         if data:
-            return Response({'success': True, 'bills': data}, status=200)
+            return Response({'success': True, 'rent_info': data}, status=200)
         else:
             return Response({'success': False, 'error': 'Could not get rent info'}, status=500)
 
@@ -794,7 +794,69 @@ def fetch_equipment(request):
 
 
 #process sell deduct inventory creat invoic get invoice payments
+@api_view(["POST"])
+def add_new_sale(request):
+    try:
+        kwargs = clear_kwargs(
+            data = request.data,
+            float_fields={"price", "discount"},
+            datetime_fields={"date"},
+            int_fields={ "quantity", "menu_id", "invoice_id"},
+            )
+        added = cafe_manager.add_new_sale(**kwargs)
+        if added:
+            return Response({'success': True})
+        else:
+            return Response({'success': False, 'error': 'Could not add new sale'}, status=500)
+
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+@api_view(["POST"])
+def add_invoice_payment(request):
+    try:
+        kwargs = clear_kwargs(
+            data = request.data,
+            float_fields={"paid", "tip"},
+            datetime_fields={"date"},
+            int_fields={"invoice_id"},
+            bool_fields={"remain_as_tip"}
+            )
+        added = cafe_manager.add_new_invoice_pay(**kwargs)
+        if added:
+            return Response({'success': True})
+        else:
+            return Response({'success': False, 'error': 'Could not add new payment'}, status=500)
+
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+@api_view(["GET"])
+def get_invoices_info(request):
+    try:
+        data = cafe_manager.get_the_invoices_info()
+        if data:
+            return Response({'success': True, 'invoices_info': data}, status=200)
+        else:
+            return Response({'success': False, 'error': 'Could not get invoice info'}, status=500)
+
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=500)
+
+
 #process usage deduct inventory
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 def clear_kwargs(data,
                  float_fields: Optional[set[str]] = None,

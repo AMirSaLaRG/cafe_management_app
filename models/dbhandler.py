@@ -1747,9 +1747,7 @@ class DBHandler:
                     ) -> Optional[InvoicePayment]:
 
         """ adding new invoice  payment"""
-        if paid is not None and paid <= 0:
-            logging.error("Total paid must be greater than 0.")
-            return None
+
 
         if payer:
             payer = payer.lower().strip()
@@ -1770,7 +1768,8 @@ class DBHandler:
                     logging.info(f"No invoice payment found with id: {invoice_id}")
                     return None
 
-
+                if tip is None:
+                    tip = 0
                 new_invoice_payment = InvoicePayment(
                     invoice_id=invoice_id,
                     paid=paid,
