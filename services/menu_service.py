@@ -11,7 +11,7 @@ class MenuService:
     def add_menu_item(self, name: str,
                       size: str,
                       category: str,
-                      value_added_tax: float,
+                      value_added_tax: Optional[float] = None,
                       serving: bool = True,
                       description: str = None) -> Optional[Menu]:
         return self.db.add_menu(name=name,

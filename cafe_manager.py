@@ -74,31 +74,32 @@ class CafeManager:
         return available_items
 
 
-    def create_new_menu_item(self,user_name:str,
+    def create_new_menu_item(self,
                              name:str,
+                             price:float,
                              size:str,
                              category:str,
-                             value_added_tax:float,
-                             recipe_items:list[dict[str, Union[Optional[str], float]]],
-                             price:float,
-                             profit_margin:float,
+                             user_name: str = None,
+                             value_added_tax:float=None,
+                             recipe_items:list[dict[str, Union[Optional[str], float]]]=None,
+                             profit_margin:float=None,
                              description=None,
                              forecast_number=None,
                              sales_forecast_from_date=None,
                              sales_forecast_to_date=None,
 
                              ):
+
         #add to menu model (name, size, category, value_added_tax, description, available)
         new_menu = self.menu.add_menu_item(name, size, category, value_added_tax, serving=True, description=description)
         if new_menu:
             actions = []
             try:
                 #get recipe for menu as a list with dicts of {inventory_id: id, amount: amount}
-                print('a')
-                for item in recipe_items:
-                    self.menu.add_recipe_of_menu_item(new_menu.id, item['inventory_id'], item['amount'],user_name, note=item['note'])
+                if recipe_items is not None:
+                    for item in recipe_items:
+                        self.menu.add_recipe_of_menu_item(new_menu.id, item['inventory_id'], item['amount'],user_name, note=item['note'])
                 #will this item change the forecast if do add to forecast model
-                print('b')
                 if not forecast_number:
                     forecast_number = 0
                 self.sales.add_sales_forecast(new_menu.id, forecast_number, sales_forecast_from_date, sales_forecast_to_date)
@@ -106,7 +107,7 @@ class CafeManager:
                 #need to calculate the estimated menu price data: (profit_margin, manual_price)
                 self.menu_pricing.calculate_updates_new_menu_item(new_menu.id, price, profit_margin, forecast_number)
                 print("d")
-
+                #todo this fucked
                 latest_estimation = self.menu_pricing.get_latest_update_price(new_menu.id)
                 return new_menu, latest_estimation
             except Exception as e:

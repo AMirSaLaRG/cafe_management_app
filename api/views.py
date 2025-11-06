@@ -83,23 +83,15 @@ def menu_items(request):
 def create_menu_item(request):
     #todo check recipe items
     try:
-        data = request.data
-        print(data)
-        menu_item, estimation = cafe_manager.create_new_menu_item(
-            user_name=data['user_name'],
-            name=data['name'],
-            size=data['size'],
-            category=data['category'],
-            value_added_tax= float(data['value_added_tax']) if data['value_added_tax'] !="" else None,
-            recipe_items= data['recipe_items'],
-            price=float(data['price']) if data['price']!="" else None,
-            profit_margin=float(data['profit_margin']),
-            description=data['description'],
-            forecast_number = int(data['forecast_number']) if data["forecast_number"]!= "" else None,
-            sales_forecast_from_date= data['sales_forecast_from_date'],
-            sales_forecast_to_date = data['sales_forecast_to_date'],
+        kwargs = clear_kwargs(
+            data=request.data,
+            float_fields={"value_added_tax", "price", "profit_margin"},
+            datetime_fields={"sales_forecast_from_date", "sales_forecast_to_date"},
+            int_fields={"forecast_number" "id"},
         )
-        print(estimation)
+        menu_item, estimation = cafe_manager.create_new_menu_item(
+            **kwargs
+        )
         if menu_item:
             if not estimation.estimated_price:
                 price_report = "Not enough data"
@@ -156,7 +148,6 @@ def edit_menu_item(request):
 def inventory_items(request):
     try:
         items = cafe_manager.get_and_format_inventory()
-        print(items)
         return Response({'success': True, 'items': items})
     except Exception as e:
         return Response({'success': False, 'error': str(e)}, status=500)
@@ -256,7 +247,6 @@ def add_new_recipe(request):
                     value = int(value)
 
             add_recipe_kwargs[key] = value
-        print(add_recipe_kwargs)
         added_recipe = cafe_manager.create_new_recipe(**add_recipe_kwargs)
         return Response({'success': added_recipe})
     except Exception as e:
@@ -297,8 +287,7 @@ def update_remove_recipe(request):
 def get_suppliers(request):
     try:
         suppliers = cafe_manager.serialization_suppliers()
-        print(suppliers)
-        print(request.query_params)
+
         if suppliers:
             return Response({'success': True, 'suppliers': suppliers})
         else:
@@ -348,7 +337,6 @@ def editing_the_supplier(request):
             edit_supplier_kwargs[key] = value
 
         added = cafe_manager.supplier_editor(**edit_supplier_kwargs)
-        print(bool(added))
         if added:
             return Response({'success': True})
         else:
